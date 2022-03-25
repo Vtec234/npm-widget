@@ -11,7 +11,8 @@ def jsTarget (pkgDir : FilePath) : FileTarget :=
       cwd := some <| pkgDir / "widget"
     }
 
-package Widget (pkgDir) {
+package UserWidget (pkgDir) {
   extraDepTarget := jsTarget pkgDir |>.withoutInfo
+  defaultFacet := PackageFacet.oleans
   -- add configuration options here
 }

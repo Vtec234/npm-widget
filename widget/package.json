@@ -10,9 +10,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@lean4/infoview": "file:///home/wojtek/Programming/TypeScript/vscode-lean4/lean4-infoview"
+    "@lean4/infoview": "file:///home/wojtek/Programming/TypeScript/vscode-lean4/lean4-infoview",
+    "react": "^17.0.2"
   },
   "devDependencies": {
+    "@types/react": "^17.0.39",
     "typescript": "^4.6.2"
    }
 }

@@ -1,5 +1,9 @@
-import { React } from '@lean4/infoview';
+import * as React from 'react';
+import { EditorContext } from '@lean4/infoview';
 
 export default function(props: {}) {
-    return <b>Hello widget!</b>;
+    const ec = React.useContext(EditorContext);
+    return <div onClick={() => {
+        ec.copyToComment('Comment!');
+    }}><b>Hello widget!</b></div>;
 }
