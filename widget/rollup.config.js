@@ -12,7 +12,6 @@ export default {
         'react',
         'react-dom',
         "@lean4/infoview",
-        "react/jsx-runtime",
     ],
     plugins: [
         typescript({
