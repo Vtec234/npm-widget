@@ -4,17 +4,26 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "watch": "tsc --watch",
-    "build": "tsc"
+    "watch": "rollup --environment NODE_ENV:production --config --watch",
+    "build": "rollup --environment NODE_ENV:production --config"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@lean4/infoview": "file:///home/wojtek/Programming/TypeScript/vscode-lean4/lean4-infoview",
-    "react": "^17.0.2"
+    "@lean4/infoview": "file:///Users/edwardayers/vscode-lean4/lean4-infoview",
+    "mathjax": "^3.2.0",
+    "mathjax-react": "^1.0.6",
+    "plotly.js": "^2.11.1",
+    "react": "^17.0.2",
+    "react-plotly.js": "^2.5.1"
   },
   "devDependencies": {
+    "@rollup/plugin-node-resolve": "^13.1.3",
+    "@rollup/plugin-typescript": "^8.3.1",
+    "@rollup/plugin-replace": "^4.0.0",
+    "@rollup/plugin-commonjs": "^21.0.3",
     "@types/react": "^17.0.39",
+    "@types/react-plotly.js": "^2.5.0",
     "typescript": "^4.6.2"
-   }
+  }
 }

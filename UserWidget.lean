@@ -1,6 +1,7 @@
 import Lean.Meta
 import Lean.Server.Rpc
 import Lean.Elab.Term
+import UserWidget.Register
 
 open Lean Elab Term System Server
 
@@ -13,14 +14,5 @@ syntax (name := includeDataFile) "include_data_file" str : term
 
 def widgetJs : String := include_data_file "./widget/dist/index.js"
 
-#eval (do
-  registerRpcProcedure
-    `Widget_getCodeAtPoint
-    Lean.Lsp.TextDocumentPositionParams
-    String
-    fun pos =>
-      RequestM.asTask do
-        return widgetJs
-  : CoreM Unit)
-
--- Widget available from here on
+@[rpc]
+def Widget_getCodeAtPoint (pos : Lean.Lsp.TextDocumentPositionParams) := RequestM.asTask <| pure <| widgetJs

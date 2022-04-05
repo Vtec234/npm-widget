@@ -1,3 +1,4 @@
 build
 widget/dist
 widget/node_modules
+.vscode/
