@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@lean4/infoview": "file:///Users/edwardayers/vscode-lean4/lean4-infoview",
+    "@lean4/infoview": "^0.1.0",
     "mathjax": "^3.2.0",
     "mathjax-react": "^1.0.6",
     "plotly.js": "^2.11.1",
