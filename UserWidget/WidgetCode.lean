@@ -80,17 +80,47 @@ structure GetWidgetResponse where
   props : Json
   deriving ToJson, FromJson
 
-@[rpc]
-def getWidget (args : Lean.Lsp.TextDocumentPositionParams) : RequestM (RequestTask GetWidgetResponse) := do
-  requestAt args fun snap => do
-      let pos := snap.beginPos
-      let n := if pos.byteIdx % 2 == 0 then `widget1 else `widget2
-      return { id := n
-             , props := Json.mkObj [("pos", pos.byteIdx)]
-             }
 
+def isWidget (e : Lean.Elab.CustomInfo) : Option GetWidgetResponse := Except.toOption (do
+  let v ← e.json.getObjVal? "kind"
+  let s ← v.getStr?
+  if (s != "widget") then
+    throw "not a widget"
+  let id : Name ← fromJson? <|← e.json.getObjVal? "id"
+  let props ← e.json.getObjVal? "props"
+  pure {id := id, props := props}
+)
+open Lean Elab in
+/--
+  Try to retrieve `CustomInfo`
+-/
+partial def InfoTree.customInfoAt? (text : FileMap) (t : InfoTree) (hoverPos : String.Pos) : List GetWidgetResponse := Id.run do
+  let cis := t.deepestNodes fun
+    | ctx, i@(Info.ofCustomInfo ci), cs => OptionM.run do
+      if let (some pos, some tailPos) := (i.pos?, i.tailPos?) then
+        let trailSize := i.stx.getTrailingSize
+        -- show info at EOF even if strictly outside token + trail
+        let atEOF := tailPos.byteIdx + trailSize == text.source.endPos.byteIdx
+        guard <| pos ≤ hoverPos ∧ (hoverPos.byteIdx < tailPos.byteIdx + trailSize || atEOF)
+        return ci
+      else
+        failure
+    | _, _, _ => none
+  return cis.filterMap isWidget
+
+@[rpc]
+def getWidget (args : Lean.Lsp.TextDocumentPositionParams) : RequestM (RequestTask (Option GetWidgetResponse)) := do
+  let doc ← readDoc
+  let pos := doc.meta.text.lspPosToUtf8Pos args.position
+  requestAt args fun snap => do
+      let widgets := InfoTree.customInfoAt? doc.meta.text snap.infoTree pos
+      if let some x := widgets.getLast? then
+        return x
+      else
+        return none
 
 end Lean.Widget
+
 
 
 
