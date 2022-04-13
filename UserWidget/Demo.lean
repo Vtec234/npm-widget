@@ -20,6 +20,31 @@ def widgetJs : String := include_str "../widget/dist/index.js"
 @[staticJS widget3]
 def widget2 : String := codefn "widget3"
 
+open Tactic
+
+#check withInfoContext
+#check saveTacticInfoForToken
+#check String.Pos
+
+syntax (name := widget) "widget!" : tactic
+@[tactic widget]
+def widgetTac : Tactic := fun stx => do
+  if let some pos := stx.getPos? then
+    let id := `widget1
+    let props := Json.mkObj [("pos", pos.byteIdx)]
+    let j := Json.mkObj [
+      ("kind", "widget"),
+      ("id", toJson id),
+      ("props", props)
+    ]
+    CustomInfo.mk stx j
+    |> Info.ofCustomInfo
+    |> pushInfoLeaf
+
+theorem asdf : True := by
+  dbg_trace "hello"
+  widget!
+  trivial
 
 #eval "hello"
 
