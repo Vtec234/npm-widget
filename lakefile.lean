@@ -15,8 +15,10 @@ package UserWidget (pkgDir) {
   extraDepTarget := jsTarget pkgDir |>.withoutInfo
   defaultFacet := PackageFacet.oleans
   -- add configuration options here
-  dependencies := #[{
+  dependencies := #[
+/-     {
     name := `mathlib
     src := Source.git "https://github.com/leanprover-community/mathlib4.git" "master"
-  }]
+  } -/
+  ]
 }
