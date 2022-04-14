@@ -1,6 +1,6 @@
 import Lean
 import UserWidget.WidgetCode
-import Mathlib.Util.IncludeStr
+import UserWidget.Util
 open Lean Server Elab
 
 def codefn (s : String) := s!"
