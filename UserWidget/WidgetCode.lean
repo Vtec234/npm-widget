@@ -5,19 +5,37 @@ open Lean Server
 
 namespace Lean.Widget
 
+structure StaticJS where
+  javascript : String
+  hash : UInt64 := hash javascript
+  deriving Inhabited, ToJson, FromJson
+
 namespace StaticJS
 
-private unsafe def mkAttributeUnsafe : IO (KeyedDeclsAttribute String) :=
-    KeyedDeclsAttribute.init {
-      name := `staticJS
-      descr := "Mark a string as static JS that can be loaded by a widget handler."
-      valueTypeName := `String
-    } `Lean.Widget.widgetCodeAttribute
+initialize extension : MapDeclarationExtension StaticJS ← mkMapDeclarationExtension `staticJS
 
-@[implementedBy mkAttributeUnsafe]
-constant mkAttribute : IO (KeyedDeclsAttribute String)
+private unsafe def attributeImplUnsafe : AttributeImpl where
+  name := `staticJS
+  descr := "Mark a string as static JS that can be loaded by a widget handler."
+  applicationTime := AttributeApplicationTime.afterCompilation
+  add decl stx kind := do
+    let env ← getEnv
+    let value ← evalConstCheck String `String decl
+    setEnv <| extension.insert env decl {javascript := value}
 
-initialize Attribute : KeyedDeclsAttribute String ← mkAttribute
+@[implementedBy attributeImplUnsafe]
+constant attributeImpl : AttributeImpl
+
+protected def find? (env : Environment) (id : Name) : Option StaticJS :=
+  extension.find? env id
+
+def getHash [MonadEnv m] [Monad m] (id : Name) : m UInt64 := do
+  let env ← getEnv
+  let some j := StaticJS.find? env id | return 0
+  return j.hash
+
+initialize registerBuiltinAttribute attributeImpl
+
 
 /-!
 # Usage of `StaticJS.Attribute`
@@ -35,7 +53,6 @@ def widget1Code := `
 ```
 
 [todo] maybe make the attribute just use the decl name?
-
 -/
 
 /-- Arguments for Widget_getCode RPC. -/
@@ -44,12 +61,9 @@ structure Args where
   pos : Lean.Lsp.TextDocumentPositionParams
   deriving ToJson, FromJson
 
-
-
-
 end StaticJS
 
-open StaticJS in
+
 /-- Given a sourcefile position and a widgetId,
 returns the javascript sourcecode for the widget at this point.
 
@@ -64,38 +78,34 @@ The position is only used to get an environment snapshot after the code has been
 However the cache _should_ be invalidated if dependencies are rebuilt.
 -/
 @[rpc]
-def getStaticJS (args : Args) : RequestM (RequestTask String) :=
+def getStaticJS (args : StaticJS.Args) : RequestM (RequestTask StaticJS) :=
   requestAt args.pos fun snap => do
       let env := snap.cmdState.env
-      let js := Attribute.getEntries env args.widgetId
-      if let some j := js.head? then
-        return j.value
+      if let some js := StaticJS.find? env args.widgetId then
+        return js
       else
         throw  (RequestError.mk JsonRpc.ErrorCode.invalidParams s!"No registered widget with name {args.widgetId}")
+
 
 open Lean.Widget RequestM Lean.Server Lean
 
 structure GetWidgetResponse where
   id : Name
+  hash : UInt64
   props : Json
   deriving ToJson, FromJson
 
 
-def isWidget (e : Lean.Elab.CustomInfo) : Option GetWidgetResponse := Except.toOption (do
-  let v ← e.json.getObjVal? "kind"
-  let s ← v.getStr?
-  if (s != "widget") then
-    throw "not a widget"
-  let id : Name ← fromJson? <|← e.json.getObjVal? "id"
-  let props ← e.json.getObjVal? "props"
-  pure {id := id, props := props}
-)
+def isWidget (e : Lean.Elab.CustomInfo) : Option GetWidgetResponse :=
+  fromJson? e.json
+  |> Except.toOption
+
 open Lean Elab in
 /--
   Try to retrieve `CustomInfo`
 -/
-partial def InfoTree.customInfoAt? (text : FileMap) (t : InfoTree) (hoverPos : String.Pos) : List GetWidgetResponse := Id.run do
-  let cis := t.deepestNodes fun
+partial def InfoTree.customInfoAt? (text : FileMap) (t : InfoTree) (hoverPos : String.Pos) : List CustomInfo :=
+  t.deepestNodes fun
     | ctx, i@(Info.ofCustomInfo ci), cs => OptionM.run do
       if let (some pos, some tailPos) := (i.pos?, i.tailPos?) then
         let trailSize := i.stx.getTrailingSize
@@ -106,18 +116,32 @@ partial def InfoTree.customInfoAt? (text : FileMap) (t : InfoTree) (hoverPos : S
       else
         failure
     | _, _, _ => none
-  return cis.filterMap isWidget
+
 
 @[rpc]
 def getWidget (args : Lean.Lsp.TextDocumentPositionParams) : RequestM (RequestTask (Option GetWidgetResponse)) := do
   let doc ← readDoc
   let pos := doc.meta.text.lspPosToUtf8Pos args.position
   requestAt args fun snap => do
-      let widgets := InfoTree.customInfoAt? doc.meta.text snap.infoTree pos
+      let cis := InfoTree.customInfoAt? doc.meta.text snap.infoTree pos
+      let widgets := cis.filterMap isWidget
       if let some x := widgets.getLast? then
         return x
       else
         return none
+        -- throw (RequestError.mk JsonRpc.ErrorCode.invalidParams s!"No registered widget at {args}.")
+
+open Elab in
+def saveWidget [Monad m] [MonadEnv m] [MonadInfoTree m] (id : Name) (props : Json) (stx : Syntax):  m Unit := do
+  let r : GetWidgetResponse := {
+    id := id,
+    hash := ← Lean.Widget.StaticJS.getHash id,
+    props := props
+  }
+  toJson r
+  |> CustomInfo.mk stx
+  |> Info.ofCustomInfo
+  |> pushInfoLeaf
 
 end Lean.Widget
 
