@@ -1,4 +1,4 @@
-import Lean
+import Lean.Data.Json
 
 /-!
 # Json-like syntax for Lean.

@@ -1,7 +1,8 @@
-import Lean
+import Lean.Server.Requests
+import Lean.Server.Rpc
 open Lean Server
 
-open Lean.Widget RequestM Lean.Server Lean in
+open RequestM in
 /-- Helper for running an Rpc request at a particular snapshot. -/
 def requestAt
   (lspPos : Lean.Lsp.TextDocumentPositionParams)
