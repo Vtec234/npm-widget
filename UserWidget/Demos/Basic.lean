@@ -1,5 +1,6 @@
 import UserWidget.WidgetCode
 import UserWidget.Util
+import UserWidget.ToHtml.Widget
 
 def codefn (s : String) := s!"
   import * as React from 'react';
@@ -27,4 +28,10 @@ def widgetTac : Tactic := fun stx => do
 
 theorem asdf : True := by
   widget!
+  trivial
+
+open scoped Lean.Widget.Jsx in
+theorem ghjk : True := by
+  html! <b>What, HTML in Lean?!</b>
+  html! <i>And another!</i>
   trivial
