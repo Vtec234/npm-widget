@@ -5,7 +5,7 @@ import UserWidget.ToHtml.Widget
 def codefn (s : String) := s!"
   import * as React from 'react';
   export default function (props) \{
-    return React.createElement('p', \{}, `{s} asdf $\{props.pos}`)
+    return React.createElement('p', \{}, `This is {s} with props $\{JSON.stringify(props)}`)
   }"
 
 @[staticJS]
@@ -14,20 +14,21 @@ def widget1 : String := codefn "widget1"
 @[staticJS]
 def widgetJs : String := include_str "../../widget/dist/index.js"
 
-@[staticJS widget3]
-def widget2 : String := codefn "widget3"
 
-syntax (name := widget) "widget!" : tactic
+syntax (name := widget) "widget!" ident : tactic
 open Lean Elab Tactic in
 @[tactic widget]
-def widgetTac : Tactic := fun stx => do
-  if let some pos := stx.getPos? then
-    let id := `widget1
-    let props := Json.mkObj [("pos", pos.byteIdx)]
-    Lean.Widget.saveWidget id props stx
+def widgetTac : Tactic
+  | stx@`(tactic| widget! $n) => do
+    if let some pos := stx.getPos? then
+      let id := n.getId
+      let props := Json.mkObj [("pos", pos.byteIdx)]
+      Lean.Widget.saveWidget id props stx
+  | _ => throwUnsupportedSyntax
 
 theorem asdf : True := by
-  widget!
+  widget! widget1
+  widget! widgetJs
   trivial
 
 open scoped Lean.Widget.Jsx in

@@ -15,12 +15,10 @@ def requestAt
     (notFoundX := throw $ RequestError.mk JsonRpc.ErrorCode.invalidRequest s!"no snapshot found at {lspPos}")
     f
 
-def rpcAttributeImpl : AttributeImpl where
+initialize registerBuiltinAttribute {
   name := `rpc
   descr := "Marks a function as a Lean server RPC method."
   applicationTime := AttributeApplicationTime.afterCompilation
-  add decl stx kind := do
+  add := fun decl stx kind =>
     registerRpcProcedure decl
-    return ()
-
-initialize registerBuiltinAttribute rpcAttributeImpl
+}
