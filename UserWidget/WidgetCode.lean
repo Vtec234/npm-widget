@@ -28,6 +28,9 @@ constant attributeImpl : AttributeImpl
 protected def find? (env : Environment) (id : Name) : Option StaticJS :=
   extension.find? env id
 
+protected def contains (env : Environment) (id : Name) : Bool :=
+  extension.contains env id
+
 def getHash [MonadEnv m] [Monad m] (id : Name) : m UInt64 := do
   let env ← getEnv
   let some j := StaticJS.find? env id | return 0
