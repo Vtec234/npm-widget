@@ -85,7 +85,4 @@ instance : ToHtmlFormat (Matrix (Fin n) (Fin n) Int) where
       {Html.element "svg" #[] (M.get_edges_html ++ Matrix.get_nodes_html n).toArray}
     </div>
 
--- TODO(WN): term elaborator for HTML
-example : True := by
-  html! (ToHtmlFormat.formatHtml cartanMatrix.E₈)
-  trivial
+#html  (ToHtmlFormat.formatHtml cartanMatrix.E₈)
