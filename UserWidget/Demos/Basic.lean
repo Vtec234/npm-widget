@@ -11,9 +11,6 @@ def codefn (s : String) := s!"
 @[staticJS]
 def widget1 : String := codefn "widget1"
 
-@[staticJS]
-def widgetJs : String := include_str "../../widget/dist/index.js"
-
 
 syntax (name := widget) "widget!" ident : tactic
 open Lean Elab Tactic in

@@ -4,7 +4,6 @@ import commonjs from '@rollup/plugin-commonjs';
 import replace from '@rollup/plugin-replace';
 export default {
     input: [
-        'src/index.tsx',
         'src/staticHtml.tsx'
     ],
     output : {
@@ -14,12 +13,12 @@ export default {
     external: [
         'react',
         'react-dom',
-        "@lean4/infoview",
     ],
     plugins: [
         typescript({
             tsconfig: "./tsconfig.json",
-            outputToFilesystem: false
+            outputToFilesystem: false,
+            sourceMap: false
         }),
         nodeResolve({
             browser: true
