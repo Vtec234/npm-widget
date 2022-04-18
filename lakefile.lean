@@ -2,8 +2,8 @@ import Lake
 open System Lake DSL
 
 def jsTarget (pkgDir : FilePath) : FileTarget :=
-  let jsFile := pkgDir / "widget/dist/index.js"
-  let srcFiles := inputFileTarget <| pkgDir / "widget/src/index.tsx"
+  let jsFile := pkgDir / "widget/dist/staticHtml.js"
+  let srcFiles := inputFileTarget <| pkgDir / "widget/src/staticHtml.tsx"
   fileTargetWithDep jsFile srcFiles fun srcFile => do
     proc {
       cmd := "npm"
