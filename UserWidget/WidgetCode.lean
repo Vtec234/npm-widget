@@ -1,9 +1,8 @@
-import Lean
 import UserWidget.RpcHelpers
 
-open Lean Server
-
 namespace Lean.Widget
+
+open Server
 
 structure StaticJS where
   javascript : String
@@ -20,7 +19,7 @@ private unsafe def attributeImplUnsafe : AttributeImpl where
   applicationTime := AttributeApplicationTime.afterCompilation
   add decl stx kind := do
     let env ← getEnv
-    let value ← evalConstCheck String `String decl
+    let value ← evalConstCheck String ``String decl
     setEnv <| extension.insert env decl {javascript := value}
 
 @[implementedBy attributeImplUnsafe]

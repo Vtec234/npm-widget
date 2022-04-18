@@ -1,4 +1,4 @@
-import Lean
+import Lean.Elab
 /- This is stuff that was in mathlib but mathlib is too unstable to depend on -/
 
 elab (name := includeStr) "include_str " str:str : term => do

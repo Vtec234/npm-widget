@@ -1,7 +1,6 @@
-import Lean
 import UserWidget.WidgetCode
 import UserWidget.Util
-open Lean Server Elab
+import UserWidget.ToHtml.Widget
 
 def codefn (s : String) := s!"
   import * as React from 'react';
@@ -13,14 +12,13 @@ def codefn (s : String) := s!"
 def widget1 : String := codefn "widget1"
 
 @[staticJS]
-def widgetJs : String := include_str "../widget/dist/index.js"
+def widgetJs : String := include_str "../../widget/dist/index.js"
 
 @[staticJS widget3]
 def widget2 : String := codefn "widget3"
 
-open Tactic
-
 syntax (name := widget) "widget!" : tactic
+open Lean Elab Tactic in
 @[tactic widget]
 def widgetTac : Tactic := fun stx => do
   if let some pos := stx.getPos? then
@@ -32,3 +30,8 @@ theorem asdf : True := by
   widget!
   trivial
 
+open scoped Lean.Widget.Jsx in
+theorem ghjk : True := by
+  html! <b>What, HTML in Lean?!</b>
+  html! <i>And another!</i>
+  trivial

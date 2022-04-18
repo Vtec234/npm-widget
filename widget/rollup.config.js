@@ -3,7 +3,10 @@ import typescript from '@rollup/plugin-typescript';
 import commonjs from '@rollup/plugin-commonjs';
 import replace from '@rollup/plugin-replace';
 export default {
-    input: 'src/index.tsx',
+    input: [
+        'src/index.tsx',
+        'src/staticHtml.tsx'
+    ],
     output : {
         dir : "dist",
         format : "es"
@@ -12,7 +15,6 @@ export default {
         'react',
         'react-dom',
         "@lean4/infoview",
-        "react/jsx-runtime",
     ],
     plugins: [
         typescript({
