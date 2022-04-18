@@ -16,22 +16,27 @@ open Lean Elab Widget in
 @[implementedBy evalHtmlUnsafe]
 constant evalHtml : Syntax → TermElabM Html
 
-open Lean Meta Elab Command in
-elab "#html" t:term : command =>
-  runTermElabM none fun _ => do
-    let id := `staticHtmlWidget
-    let ht ← evalHtml t
-    let props := Json.mkObj [("html", toJson ht)]
-    Lean.Widget.saveWidget id props t
+syntax (name := htmlCmd) "#html " term : command
 
-syntax (name := html) "html!" term : tactic
+open Lean Meta Elab Command in
+@[commandElab htmlCmd]
+def elabHtmlCmd : CommandElab := fun
+  | stx@`(#html%$tk $t:term) =>
+    runTermElabM none fun _ => do
+      let id := `staticHtmlWidget
+      let ht ← evalHtml t
+      let props := Json.mkObj [("html", toJson ht)]
+      Lean.Widget.saveWidget id props stx
+  | stx => throwError "Unexpected syntax {stx}."
+
+syntax (name := htmlTac) "html! " term : tactic
 
 open Lean Elab Tactic in
-@[tactic html]
-def htmlTac : Tactic
-  | `(tactic| html! $t:term) => do
+@[tactic htmlTac]
+def elabHtmlTac : Tactic
+  | stx@`(tactic| html! $t:term) => do
     let id := `staticHtmlWidget
     let ht ← evalHtml t
     let props := Json.mkObj [("html", toJson ht)]
-    Lean.Widget.saveWidget id props t
+    Lean.Widget.saveWidget id props stx
   | stx => throwError "Unexpected syntax {stx}."
