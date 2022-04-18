@@ -6,18 +6,23 @@ export type Html =
   { element: [string, HtmlAttribute[], Html[]] } |
   { text: string }
 
-export function Html_toRawString(h : Html): string {
+export function HtmlComponent(h : Html) : any {
   if ('text' in h) return h.text
   else if ('element' in h) {
-    const tag = h.element[0]
-    const attrs = h.element[1].map(([name, val]) => `${name}="${val}"`).join(' ')
-    const cs = h.element[2].map(Html_toRawString).join('')
-
-    return `<${tag} ${attrs}>${cs}</${tag}>`
+    const [tag, attrs, children] = h.element
+    const attrObj : {[k : string]: string}= {}
+    for (const kv in attrs) {
+      let [k,v] = kv
+      if (k == "class") {
+        attrObj["className"] = v
+      }
+      attrObj[k] = v
+    }
+    return React.createElement(tag, attrObj, children.map(HtmlComponent))
   }
   else throw `unexpected variant ${h} of Html`
 }
 
 export default function (props: { html: Html }) {
-    return <span dangerouslySetInnerHTML={{__html: Html_toRawString(props.html)}}></span>;
+    return HtmlComponent(props.html)
 }
