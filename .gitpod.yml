@@ -4,7 +4,4 @@ image:
 tasks:
   - init: |
       lake build
-
-vscode:
-  extensions:
-    - leanprover.lean4
+      code --install-extension /workspace/npm-widget/lean4-0.0.70.vsix
