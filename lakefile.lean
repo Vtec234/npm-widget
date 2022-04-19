@@ -7,6 +7,11 @@ def jsTarget (pkgDir : FilePath) : FileTarget :=
   fileTargetWithDep jsFile srcFiles fun srcFile => do
     proc {
       cmd := "npm"
+      args := #["install"]
+      cwd := some <| pkgDir / "widget"
+    }
+    proc {
+      cmd := "npm"
       args := #["run", "build"]
       cwd := some <| pkgDir / "widget"
     }
