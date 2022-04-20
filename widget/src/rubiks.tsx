@@ -180,10 +180,6 @@ export default function (props: any) {
     <Canvas >
       <pointLight position={[150, 150, 150]} intensity={0.55} />
       <ambientLight color={0xffffff} />
-      <mesh>
-        <planeGeometry args={[1, 1]} />
-        <meshPhongMaterial color={"blue"} />
-      </mesh>
       <group rotation-x={Math.PI * 0.25} rotation-y={Math.PI * 0.25}>
         <Cube seq={seq} time={t / 100} />
       </group>
