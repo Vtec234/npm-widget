@@ -8,4 +8,4 @@ open Lean Elab Command
 @[staticJS]
 def rubiks : String := include_str "../../widget/dist/rubiks.js"
 
-#widget rubiks {seq : ["U", "L", "R", "L⁻¹", "F"] }
+#widget rubiks {seq : ["U", "L", "R", "L⁻¹", "R"] }
