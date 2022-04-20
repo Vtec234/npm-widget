@@ -6,6 +6,7 @@ export default {
     input: [
         'src/staticHtml.tsx',
         "src/mathjax.tsx",
+        "src/rubiks.tsx",
     ],
     output : {
         dir : "dist",
