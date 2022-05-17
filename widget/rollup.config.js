@@ -7,6 +7,7 @@ export default {
         'src/staticHtml.tsx',
         "src/mathjax.tsx",
         "src/rubiks.tsx",
+        "src/magicrewrite.tsx",
     ],
     output : {
         dir : "dist",
