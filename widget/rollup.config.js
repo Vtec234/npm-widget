@@ -4,9 +4,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import replace from '@rollup/plugin-replace';
 export default {
     input: [
-        'src/staticHtml.tsx',
-        "src/mathjax.tsx",
-        "src/rubiks.tsx",
+        "src/squares.tsx"
     ],
     output : {
         dir : "dist",
@@ -15,6 +13,7 @@ export default {
     external: [
         'react',
         'react-dom',
+        '@lean4/infoview',
     ],
     plugins: [
         typescript({
