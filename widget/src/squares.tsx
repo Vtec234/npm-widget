@@ -1,7 +1,4 @@
 import * as React from 'react';
-import * as ReactDOM from 'react-dom';
-
-import * as Svg from '@svgdotjs/svg.js';
 
 import { RpcSessions } from '@lean4/infoview/infoview/rpcSessions';
 import { ExprPtr } from '@lean4/infoview/infoview/rpcInterface';
@@ -14,65 +11,125 @@ interface DiagramData {
     kind: DiagramKind
 }
 
-function mkArrow(svg: Svg.Svg): Svg.G {
-    const group = svg.group()
-    group.path('M 20.507031 8.767563 L 20.507031 -8.369156 ')
-        .fill('none')
-        .stroke({
-            color: 'rgb(0, 0, 0)',
-            width: 0.39848,
-            opacity: 1,
-            linecap: 'butt',
-            linejoin: 'miter',
-            miterlimit: 10,
-        })
-    group.path('M -2.073854 2.390306 C -1.694947 0.956712 -0.851197 0.277025 0.000365 -0.00031875 C -0.851197 -0.277663 -1.694947 -0.95735 -2.073854 -2.390944 ')
-        .fill('none')
-        .stroke({
-            color: 'rgb(0, 0, 0)',
-            width: 0.39848,
-            opacity: 1,
-            linecap: 'round',
-            linejoin: 'round',
-            miterlimit: 10,
-        })
-    return group
+// https://stackoverflow.com/a/6333775
+function canvas_arrow(context, fromx, fromy, tox, toy) {
+    var headlen = 10; // length of head in pixels
+    var dx = tox - fromx;
+    var dy = toy - fromy;
+    var angle = Math.atan2(dy, dx);
+    context.moveTo(fromx, fromy);
+    context.lineTo(tox, toy);
+    context.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+    context.moveTo(tox, toy);
+    context.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
 }
 
 function CommSquare({pos, diag}: {pos: DocumentPosition, diag: DiagramData}): JSX.Element {
-    // const ref = React.useRef<SVGSVGElement | null>(null)
-    // const [divs, setDivs] = React.useState<HTMLDivElement[]>([])
-    // React.useEffect(() => {
-    //     if (!ref.current) return
-    //     const svg = Svg.SVG(ref.current).size(200, 200)
-    //     const rect = svg.rect(100, 100).attr({fill: '#f06'})
-    //     const foreign = svg.foreignObject(100, 100).size(100,100)
-    //     const div = document.createElement('div')
-    //     foreign.add(new Svg.Dom(div, { xmlns: 'http://www.w3.org/1999/xhtml'}))
-    //     setDivs([div])
-    //     const arr = mkArrow(svg).scale(2, 2)
-    //     // arr.x(foreign.bbox().x2 + 5)
+    const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
+    const objRefs: React.MutableRefObject<HTMLDivElement | null>[] = []
+    for (let i = 0; i < 4; i++) objRefs.push(React.useRef(null))
+    const homRefs: React.MutableRefObject<HTMLDivElement | null>[] = []
+    for (let i = 0; i < 4; i++) homRefs.push(React.useRef(null))
 
-    // }, [ref])
-    // return <>
-    //     {divs.length > 0 &&
-    //         ReactDOM.createPortal(<InteractiveExpr pos={pos} expr={diag.objs[0]} explicit={false}/>, divs[0])}
-    //     <svg xmlns="http://www.w3.org/2000/svg" ref={ref} />
-    // </>
+    const objBbs: DOMRect[] = []
+    for (let i = 0; i < 4; i++) {
+        if (!objRefs[i].current) continue
+        objBbs[i] = objRefs[i].current!.getBoundingClientRect()
+    }
 
-    return <>
-        Commutative square:<br/>
-        objects<br/>
-        <InteractiveExpr pos={pos} expr={diag.objs[0]} explicit={false} /><br/>
-        <InteractiveExpr pos={pos} expr={diag.objs[1]} explicit={false} /><br/>
-        <InteractiveExpr pos={pos} expr={diag.objs[2]} explicit={false} /><br/>
-        <InteractiveExpr pos={pos} expr={diag.objs[3]} explicit={false} /><br/>
-        arrows<br/>
-        <InteractiveExpr pos={pos} expr={diag.homs[0]} explicit={false} /><br/>
-        <InteractiveExpr pos={pos} expr={diag.homs[1]} explicit={false} /><br/>
-        <InteractiveExpr pos={pos} expr={diag.homs[2]} explicit={false} /><br/>
-        <InteractiveExpr pos={pos} expr={diag.homs[3]} explicit={false} /><br/>
-    </>
+    React.useEffect(() => {
+        if (!canvasRef.current) return
+        const bbCanvas = canvasRef.current.getBoundingClientRect()
+        const w = bbCanvas.width, h = bbCanvas.height
+        canvasRef.current.width = w
+        canvasRef.current.height = h
+        const ctx = canvasRef.current.getContext('2d')
+        if (!ctx) return
+        if (!objBbs[0] || !objBbs[1] || !objBbs[2] || !objBbs[3]) return
+
+        const toCanvasX = (x: number) => (x - bbCanvas.x)
+        const toCanvasY = (y: number) => (y - bbCanvas.y)
+
+        ctx.clearRect(0,0,w,h)
+        ctx.beginPath()
+        ctx.lineWidth = 2
+        ctx.lineCap = 'round'
+        canvas_arrow(
+            ctx,
+            toCanvasX((objBbs[0].left + objBbs[0].right) / 2),
+            toCanvasY(objBbs[0].bottom),
+            toCanvasX((objBbs[0].left + objBbs[0].right) / 2),
+            toCanvasY(objBbs[3].top)
+        )
+
+        canvas_arrow(
+            ctx,
+            toCanvasX((objBbs[1].left + objBbs[1].right) / 2),
+            toCanvasY(objBbs[1].bottom),
+            toCanvasX((objBbs[1].left + objBbs[1].right) / 2),
+            toCanvasY(objBbs[2].top)
+        )
+
+        canvas_arrow(
+            ctx,
+            toCanvasX(objBbs[0].right), 
+            toCanvasY((objBbs[0].top + objBbs[0].bottom) / 2),
+            toCanvasX(objBbs[1].left),
+            toCanvasY((objBbs[0].top + objBbs[0].bottom) / 2)
+        )
+
+        canvas_arrow(
+            ctx,
+            toCanvasX(objBbs[3].right),
+            toCanvasY((objBbs[3].top + objBbs[3].bottom) / 2),
+            toCanvasX(objBbs[2].left),
+            toCanvasY((objBbs[3].top + objBbs[3].bottom) / 2)
+        )
+        ctx.stroke()
+    }, [canvasRef.current, objBbs[0], objBbs[1], objBbs[2], objBbs[3]])
+
+    return <div>
+        <div
+            style={{
+                display: 'grid',
+                gridTemplateRows: 'repeat(5, auto)',
+                gridTemplateColumns: 'repeat(5, auto)'
+            }}
+            className='relative tc'
+        >
+            <canvas
+                className='w-100 h-100 absolute'
+                style={{zIndex: -1}}
+                width={1000}
+                height={1000}
+                ref={canvasRef}
+            />
+            <div ref={objRefs[0]} style={{gridRow: 2, gridColumn: 2}}>
+                <InteractiveExpr pos={pos} expr={diag.objs[0]} explicit={false} />
+            </div>
+            <div ref={homRefs[0]} style={{gridRow: 1, gridColumn: 3}}>
+                <InteractiveExpr pos={pos} expr={diag.homs[0]} explicit={false} />
+            </div>
+            <div ref={objRefs[1]} style={{gridRow: 2, gridColumn: 4}}>
+                <InteractiveExpr pos={pos} expr={diag.objs[1]} explicit={false} />
+            </div>
+            <div ref={homRefs[1]} style={{gridRow: 3, gridColumn: 5}} className='tl mt5 mb5'>
+                <InteractiveExpr pos={pos} expr={diag.homs[1]} explicit={false} />
+            </div>
+            <div ref={objRefs[2]} style={{gridRow: 4, gridColumn: 4}}>
+                <InteractiveExpr pos={pos} expr={diag.objs[2]} explicit={false} />
+            </div>
+            <div ref={homRefs[2]} style={{gridRow: 5, gridColumn: 3}}>
+                <InteractiveExpr pos={pos} expr={diag.homs[2]} explicit={false} />
+            </div>
+            <div ref={objRefs[3]} style={{gridRow: 4, gridColumn: 2}}>
+                <InteractiveExpr pos={pos} expr={diag.objs[3]} explicit={false} />
+            </div>
+            <div ref={homRefs[3]} style={{gridRow: 3, gridColumn: 1}} className='tr mt5 mb5'>
+                <InteractiveExpr pos={pos} expr={diag.homs[3]} explicit={false} />
+            </div>
+        </div>
+    </div>
 }
 
 function CommTriangle({pos, diag}: {pos: DocumentPosition, diag: DiagramData}): JSX.Element {
