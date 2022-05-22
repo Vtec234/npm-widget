@@ -108,7 +108,7 @@ open Lean Elab in
 -/
 partial def InfoTree.customInfoAt? (text : FileMap) (t : InfoTree) (hoverPos : String.Pos) : List CustomInfo :=
   t.deepestNodes fun
-    | ctx, i@(Info.ofCustomInfo ci), cs => OptionM.run do
+    | ctx, i@(Info.ofCustomInfo ci), cs => do
       if let (some pos, some tailPos) := (i.pos?, i.tailPos?) then
         let trailSize := i.stx.getTrailingSize
         -- show info at EOF even if strictly outside token + trail
