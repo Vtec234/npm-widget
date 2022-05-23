@@ -168,9 +168,9 @@ def getCommutativeDiagram (args : Lean.Lsp.TextDocumentPositionParams) : Request
 example {f g : Nat ⟶ Bool}: f = g → (f ≫ 𝟙 Bool) = (g ≫ 𝟙 Bool) := by
   intro h
   squares!
-  sorry
+  exact h
 
 example {f g : Nat ⟶ Bool}: f = g → f = (g ≫ 𝟙 Bool) := by
   intro h
   squares!
-  sorry
+  exact h
