@@ -1,4 +1,4 @@
-import UserWidget.WidgetCode
+import UserWidget.WidgetProtocol
 import UserWidget.Util
 import UserWidget.ToHtml.Widget
 
@@ -32,6 +32,5 @@ theorem asdf : True := by
 open scoped Lean.Widget.Jsx in
 theorem ghjk : True := by
   html! <b>What, HTML in Lean?! </b>
-  html! <i>And another!</i>
   trivial
 

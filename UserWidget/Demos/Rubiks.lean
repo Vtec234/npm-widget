@@ -1,6 +1,6 @@
 import Lean
 import UserWidget.Json
-import UserWidget.WidgetCode
+import UserWidget.WidgetCommand
 import UserWidget.Util
 open Lean Elab Command
 

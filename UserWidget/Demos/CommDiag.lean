@@ -4,7 +4,7 @@ import Lean.Server.Rpc.RequestHandling
 import Lean.Elab
 import Lean.Widget.Basic
 
-import UserWidget.WidgetCode
+import UserWidget.WidgetProtocol
 import UserWidget.Util
 import UserWidget.ToHtml.Widget
 
