@@ -2,7 +2,6 @@ import Lean
 import Lean.Server.Requests
 import Lean.Server.Rpc
 import UserWidget.SubExpr
-import UserWidget.RpcHelpers
 
 -- [todo] these functions must exist somewhere but not sure what they are called
 
@@ -14,17 +13,8 @@ def List.collectM [Monad M] (f : α → M (List β)) : List α → M (List β)
   | [] => return []
   | head :: tail => pure List.append <*> f head <*> collectM f tail
 
--- [todo] surely in core somewhere? It's not. Maybe for the same reason that Option is not a Monad.
--- Lake does have the instance though.
-instance : Monad Task := {
-  map := Task.map
-  pure := Task.pure
-  bind := Task.bind
-}
-
 namespace Lean.Server
 -- [todo] probably put this in core?
-#synth Monad Task
 #check Task.map
 #check MonadError
 #check MonadExcept
@@ -32,9 +22,8 @@ namespace Lean.Server
 
 namespace RequestTask
 
-instance : Monad RequestTask  := show Monad (ExceptT RequestError Task) by infer_instance
-
 end RequestTask
+-- [todo] add to core?
 #check RequestM.bindTask
 def RequestM.bindRequestTask (t : RequestTask α) (f : α → RequestM (RequestTask β)) : RequestM (RequestTask β) := do
   let ctx ← read
@@ -43,9 +32,6 @@ def RequestM.bindRequestTask (t : RequestTask α) (f : α → RequestM (RequestT
     | Except.ok a => f a ctx
   )
 #check EStateM.adaptExcept
--- def RequestM.liftIO (m : IO α) : RequestM (α)
---   | ctx => EStateM.adaptExcept Coe.coe m
-
 end Lean.Server
 
 
@@ -209,13 +195,13 @@ def getTacticStateInfo (pos : Lean.Lsp.TextDocumentPositionParams) : RequestM (R
 #check CodeWithInfos
 #check Lean.Server.RequestTask
 
-@[rpc]
+@[serverRpcMethod]
 def queryContextualSuggestions (args : ContextualSuggestionQueryRequest) : RequestM (RequestTask ContextualSuggestionQueryResponse) := do
   let tsis ← getTacticStateInfo args.pos
   RequestM.bindRequestTask tsis fun tsis => do
-    let tsi :: _ := tsis | return (pure ∅)
+    let tsi :: _ := tsis | return (Task.pure <| Except.pure <| ∅)
     -- [todo] idk what the other TacticStateInfos are doing
     let cs ← runSuggestionProviders tsi args
-    return pure {completions := cs.toArray}
+    return Task.pure <| Except.pure <| {completions := cs.toArray}
 
 end Lean.Widget

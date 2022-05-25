@@ -1,7 +1,6 @@
 import UserWidget.WidgetProtocol
 import UserWidget.Util
 import UserWidget.ToHtml.Widget
-import UserWidget.Latex
 
 def codefn (s : String) := s!"
   import * as React from 'react';
