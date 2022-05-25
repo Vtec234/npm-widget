@@ -7,7 +7,6 @@ import Lean.Widget.Basic
 import UserWidget.WidgetCode
 import UserWidget.Util
 import UserWidget.ToHtml.Widget
-import UserWidget.Latex
 
 /-! Demonstrates commutative diagrams.
 
