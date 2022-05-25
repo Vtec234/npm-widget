@@ -1,4 +1,4 @@
-import UserWidget.WidgetCode
+import UserWidget.WidgetProtocol
 import UserWidget.Util
 import UserWidget.ToHtml.Widget
 import UserWidget.Latex
@@ -36,4 +36,3 @@ theorem ghjk : True := by
   html! <i>And another!</i>
   trivial
 
-#tex "\\int_0^1 x^2\\ dy"
