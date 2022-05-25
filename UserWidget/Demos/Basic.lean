@@ -1,7 +1,6 @@
 import UserWidget.WidgetCode
 import UserWidget.Util
 import UserWidget.ToHtml.Widget
-import UserWidget.Latex
 
 def codefn (s : String) := s!"
   import * as React from 'react';
@@ -36,4 +35,3 @@ theorem ghjk : True := by
   html! <i>And another!</i>
   trivial
 
-#tex "\\int_0^1 x^2\\ dy"
