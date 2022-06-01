@@ -143,7 +143,7 @@ def runTacticM (tsi : TacticStateInfo) (t : TacticM α) : IO (α × TacticStateI
             { env := tsi.env, ngen := tsi.ngen}
   return (a, tsi.updateState tacticState metaState)
 
-def runSuggestionProviders (tsi : TacticStateInfo) (query : ContextualSuggestionQueryRequest) (debugMode := true) : IO (List Suggestion) := do
+def runSuggestionProviders (tsi : TacticStateInfo) (query : ContextualSuggestionQueryRequest) (debugMode := false) : IO (List Suggestion) := do
   -- [todo] each s might be a long-running computation (eg finding all of the lemmas which may apply.)
   let providers ← tsi.runCore getSuggestionProviders
   providers.collectM fun provider => do
