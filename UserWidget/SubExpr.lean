@@ -21,6 +21,16 @@ def current (p : Pos) : Nat := if p.isTop then panic! "already at top" else p % 
 def pop (p : Pos) : Pos := if p.isTop then panic! "already at top" else (p - p.current) / N
 def push (p : Pos) (c : Nat) : Pos := if c >= N then panic! s!"invalid coordinate {c}" else p * N + c
 
+partial def validate (p : Pos) : Except String Unit := do
+  if p.isTop then
+    if p != 1 then
+      throw s!"invalid root value {p}"
+    return ()
+  if p.current >= N then
+    throw s!"invalid coordinate {p.current} >= {N}"
+  validate p.pop
+
+
 variable {α : Type} [Inhabited α]
 
 /-- Fold over the position starting at the root and heading to the leaf-/
@@ -187,6 +197,9 @@ def up (s : SubExpr) : Except String SubExpr :=
 def up! (s : SubExpr) : SubExpr := s.up.get!
 
 def viewRaw! (s : SubExpr) := s.viewRaw.get!
+
+/-- Checks whether the Subexpr is well-formed. -/
+def validateNoTypes (s : SubExpr) := s.viewRaw *> pure ()
 
 private def downAux (test : Expr → Bool) (coord : Nat) (s : SubExpr) :  Option SubExpr :=
   if test s.viewRaw! then some {s with pos := s.pos.push coord} else none

@@ -8,8 +8,8 @@ import UserWidget.SuggestionProviders
 -/
 
 example (x y : Nat) : x = y → y = x := by
+  intros
   -- put your cursor here!
   -- and click on the arrow in the tactic state
-
   sorry
 

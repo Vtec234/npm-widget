@@ -39,13 +39,32 @@ structure TargetLocation where
   goalId : Name
   subexprPos : Nat
 
+-- [todo] this probably already exists.
+def liftExcept [MonadError M] [Monad M] : Except String α → M α
+  | Except.ok a => pure a
+  | Except.error e => throwError e
+
 def isTargetLocation : Json → Except String (TargetLocation)
   | j => do
-    let Json.arr #[j_id, Json.str "type", j_pos] := j | throw "invalid"
+    let Json.arr #[j_id, Json.str "type", j_pos] := j
+      | throw s!"{j} is not a goal target type location."
     return {
       goalId := (← fromJson? j_id)
       subexprPos := (← fromJson? j_pos)
     }
+/-- The user clicked somewhere in the hypothesis's type. -/
+def isHypothesisTypeLocation : Json → Except String (MVarId × FVarId × Nat)
+  | j => do
+    let Json.arr #[j_goalId, Json.str "hyps",  j_fvarid, "type", j_pos] := j
+      | throw s!"{j} is not a hypothesis location"
+    -- [todo] something's gone wrong with FromJson FVarId (multiple isntances?)
+    let n : Name ← fromJson? j_fvarid
+    let fvarId : FVarId := FVarId.mk n
+    return (
+      ← fromJson? j_goalId,
+      fvarId,
+      ← fromJson? j_pos
+    )
 
 structure ContextualSuggestionQueryRequest where
   pos : Lean.Lsp.TextDocumentPositionParams
@@ -71,6 +90,9 @@ structure Suggestion  where
 
 /-- Used for dirty debugging (eg showing errors inline etc.)-/
 def Suggestion.dummy (s : String) : Suggestion := {goals := ⟨#[]⟩, insert := s, display := s}
+
+def Suggestion.ofSyntax (s : Syntax) : CoreM SuggestionBase :=
+  do return {insert := toString $ ← Lean.PrettyPrinter.ppCommand s}
 
 structure ContextualSuggestionQueryResponse where
   completions : Array Suggestion
@@ -143,7 +165,11 @@ def runTacticM (tsi : TacticStateInfo) (t : TacticM α) : IO (α × TacticStateI
             { env := tsi.env, ngen := tsi.ngen}
   return (a, tsi.updateState tacticState metaState)
 
-def runSuggestionProviders (tsi : TacticStateInfo) (query : ContextualSuggestionQueryRequest) (debugMode := false) : IO (List Suggestion) := do
+def runSuggestionProviders
+  (tsi : TacticStateInfo)
+  (query : ContextualSuggestionQueryRequest)
+  (debugMode := false)
+  : IO (List Suggestion) := do
   -- [todo] each s might be a long-running computation (eg finding all of the lemmas which may apply.)
   let providers ← tsi.runCore getSuggestionProviders
   providers.collectM fun provider => do
