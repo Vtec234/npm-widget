@@ -1,7 +1,7 @@
 import UserWidget.ContextualSuggestion
+import UserWidget.PrettyNameGenerator
 
 open Lean Elab Tactic Widget Meta PrettyPrinter Delaborator
-
 @[suggestion_provider]
 def introSuggestionProvider : SuggestionProvider
   | req => do
@@ -13,21 +13,23 @@ def introSuggestionProvider : SuggestionProvider
     let s : SubExpr := ⟨goalType, loc.subexprPos⟩
     -- [todo] assert s is valid
     let rootBinder ← s.view (fun _ => binder)
-    let abovePis ← (s.foldAncestors (fun fvars e i a => do
-      if (i != 0) then throwError "not focussed on body in {e}"
-      match e with
-      | Expr.forallE n y b _ => return a.push (n,y)
-      | e => throwError "expected {e} to be a forall."
+    let abovePis : Array (Name × Expr) ← (s.foldAncestors (fun fvars e i a => do
+      if (i != 1) then throwError "not focussed on body in {e}"
+      let b ← binder e
+      return a.push b
     ) #[])
+    let binders := abovePis.push rootBinder
     return [do
-      let stx ← `(tactic| intros)
+      let names ← prettyNamesForHyp binders
+      let ids := names.map mkIdent
+      let stx ← `(tactic| intros $ids*)
       Lean.Elab.Tactic.evalIntros stx
-      let insert ← ppCommand stx
-      return {display := "intros", insert := toString insert}
+      let insert ← toString <$> ppCommand stx
+      return {display := insert, insert := insert}
     ]
 
-  where binder : Expr → TacticM Name
-    | (Expr.forallE n y b _) => pure n
+  where binder : Expr → TacticM (Name × Expr)
+    | (Expr.forallE n y b _) => pure (n, y)
     | e => throwError "{e} is not a binder"
 
 
