@@ -109,9 +109,15 @@ structure TacticStateInfo extends ContextInfo where
   /-- The tactic that this is the syntax for. -/
   stx : Syntax
 
+
 def TacticStateInfo.runCore (info : TacticStateInfo) (c : CoreM α) : IO α := do
   let (r, _) ← CoreM.toIO c
-          { options := info.options, currNamespace := info.currNamespace, openDecls := info.openDecls }
+          { options := info.options,
+            currNamespace := info.currNamespace,
+            openDecls := info.openDecls,
+            fileMap := info.fileMap,
+            fileName := Inhabited.default,
+          }
           { env := info.env, ngen := info.ngen }
   return r
 
@@ -131,7 +137,7 @@ syntax (name := suggestion_provider) "suggestion_provider" : attr
 initialize registerBuiltinAttribute {
   name := `suggestion_provider
   descr := "Use to decorate methods for computing contextual suggestions."
-  add := fun src stx kind => do
+  add := fun src _stx _kind => do
     suggestionProviders.add src ()
 }
 
@@ -156,13 +162,12 @@ def runTacticM (tsi : TacticStateInfo) (t : TacticM α) : IO (α × TacticStateI
   let g :: _ := tsi.goals
     | throwThe IO.Error $ IO.Error.userError "goal state is bad"
   let lctx := mctx.getDecl g |>.lctx
-  let (((a, tacticState), metaState), coreState) ←
+  let ((a, tacticState), metaState) ←
     t {elaborator := tsi.elaborator}
     |>.run {goals := tsi.goals}
     |>.run'
     |>.run {lctx := lctx} {mctx := mctx}
-    |>.toIO { options := tsi.options, currNamespace := tsi.currNamespace, openDecls := tsi.openDecls}
-            { env := tsi.env, ngen := tsi.ngen}
+    |> TacticStateInfo.runCore tsi
   return (a, tsi.updateState tacticState metaState)
 
 def runSuggestionProviders

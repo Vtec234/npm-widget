@@ -29,7 +29,7 @@ private unsafe def attributeImplUnsafe : AttributeImpl where
   name := `staticJS
   descr := "Mark a string as static JS that can be loaded by a widget handler."
   applicationTime := AttributeApplicationTime.afterCompilation
-  add decl stx kind := do
+  add decl _stx _kind := do
     let env ← getEnv
     let value ← evalConstCheck String ``String decl
     setEnv <| extension.insert env decl {javascript := value}
@@ -122,7 +122,7 @@ open Lean Elab in
 -/
 partial def InfoTree.customInfoAt? (text : FileMap) (t : InfoTree) (hoverPos : String.Pos) : List CustomInfo :=
   t.deepestNodes fun
-    | ctx, i@(Info.ofCustomInfo ci), cs => do
+    | _ctx, i@(Info.ofCustomInfo ci), _cs => do
       if let (some pos, some tailPos) := (i.pos?, i.tailPos?) then
         let trailSize := i.stx.getTrailingSize
         -- show info at EOF even if strictly outside token + trail

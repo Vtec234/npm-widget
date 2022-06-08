@@ -23,7 +23,7 @@ syntax (name := htmlCmd) "#html " term : command
 open Lean Meta Elab Command in
 @[commandElab htmlCmd]
 def elabHtmlCmd : CommandElab := fun
-  | stx@`(#html%$tk $t:term) =>
+  | stx@`(#html $t:term) =>
     runTermElabM none fun _ => do
       let id := `staticHtmlWidget
       let ht ← evalHtml t

@@ -7,8 +7,7 @@ import UserWidget.SuggestionProviders
 
 -/
 
-example (x y : Nat) : x = y → y = x := by
-  intros
+example (x y : Nat) : x = x → y = y → x = y → y = x := by
   -- put your cursor here!
   -- and click on the arrow in the tactic state
   sorry

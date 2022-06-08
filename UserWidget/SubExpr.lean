@@ -5,15 +5,18 @@ Authors: E.W.Ayers
 -/
 import Lean
 
+
+/- [TODO] THIS WILL BE IN CORE SOON -/
+
 def Except.get! [Inhabited α] [ToString ε] : Except ε α → α
 | Except.ok a => a
 | Except.error e => panic! (toString e)
 
-namespace Lean.PrettyPrinter.Delaborator
+namespace Lean
 
 private abbrev N : Nat := SubExpr.maxChildren
 
-namespace Pos
+namespace SubExpr.Pos
 
 def top : Pos := 1
 def isTop (p : Pos) : Bool := p < N
@@ -64,7 +67,7 @@ def encode (ps : Array Nat) : Pos :=
 def decode (p : Pos) : Array Nat :=
   foldl Array.push #[] p
 
-end Pos
+end SubExpr.Pos
 
 namespace SubExpr
 
@@ -81,16 +84,16 @@ Mdata is ignored. An index of 3 is interpreted as the type of the expression. An
 private def lensCoord (g : Expr → M Expr) : Nat → Expr → M Expr
   | 0, e@(Expr.app f a _)       => return e.updateApp! (← g f) a
   | 1, e@(Expr.app f a _)       => return e.updateApp! f (← g a)
-  | 0, e@(Expr.lam n y b _)     => return e.updateLambdaE! (← g y) b
+  | 0, e@(Expr.lam _ y b _)     => return e.updateLambdaE! (← g y) b
   | 1, e@(Expr.lam n y b c)     => return e.updateLambdaE! y <|← withLocalDecl n c.binderInfo y fun x => do mkLambdaFVars #[x] (← g (b.instantiateRev #[x]))
-  | 0, e@(Expr.forallE n y b _) => return e.updateForallE! (← g y) b
+  | 0, e@(Expr.forallE _ y b _) => return e.updateForallE! (← g y) b
   | 1, e@(Expr.forallE n y b c) => return e.updateForallE! y <|← withLocalDecl n c.binderInfo y fun x => do mkForallFVars #[x] (← g (b.instantiateRev #[x]))
-  | 0, e@(Expr.letE n y a b c)  => return e.updateLet! (← g y) a b
-  | 1, e@(Expr.letE n y a b c)  => return e.updateLet! y (← g a) b
-  | 2, e@(Expr.letE n y a b c)  => return e.updateLet! y a (← withLetDecl n y a fun x => do mkLetFVars #[x] (← g (b.instantiateRev #[x])))
+  | 0, e@(Expr.letE _ y a b _)  => return e.updateLet! (← g y) a b
+  | 1, e@(Expr.letE _ y a b _)  => return e.updateLet! y (← g a) b
+  | 2, e@(Expr.letE n y a b _)  => return e.updateLet! y a (← withLetDecl n y a fun x => do mkLetFVars #[x] (← g (b.instantiateRev #[x])))
   | 0, e@(Expr.proj _ _ b _)    => pure e.updateProj! <*> g b
   | n, e@(Expr.mdata _ a _)     => pure e.updateMData! <*> lensCoord g n a
-  | 3, e                        => throwError "Lensing on types is not supported"
+  | 3, _                        => throwError "Lensing on types is not supported"
   | c, e                        => throwError "Invalid coordinate {c} for {e}"
 
 private def lensAux (g : Expr → M Expr) : List Nat → Expr → M Expr
@@ -109,17 +112,17 @@ open Except in
 /-- Get the raw subexpression without performing any instantiation. -/
 private def viewCoordRaw: Nat → Expr → Except String Expr
   | 3, e                        => error s!"Can't viewRaw the type of {e}"
-  | 0, e@(Expr.app f a _)       => ok f
-  | 1, e@(Expr.app f a _)       => ok a
-  | 0, e@(Expr.lam n y b _)     => ok y
-  | 1, e@(Expr.lam n y b c)     => ok b
-  | 0, e@(Expr.forallE n y b _) => ok y
-  | 1, e@(Expr.forallE n y b c) => ok b
-  | 0, e@(Expr.letE n y a b c)  => ok y
-  | 1, e@(Expr.letE n y a b c)  => ok a
-  | 2, e@(Expr.letE n y a b c)  => ok b
-  | 0, e@(Expr.proj _ _ b _)    => ok b
-  | n, e@(Expr.mdata _ a _)     => viewCoordRaw n a
+  | 0, (Expr.app f _ _)       => ok f
+  | 1, (Expr.app _ a _)       => ok a
+  | 0, (Expr.lam _ y _ _)     => ok y
+  | 1, (Expr.lam _ _ b _)     => ok b
+  | 0, (Expr.forallE _ y _ _) => ok y
+  | 1, (Expr.forallE _ _ b _) => ok b
+  | 0, (Expr.letE _ y _ _ _)  => ok y
+  | 1, (Expr.letE _ _ a _ _)  => ok a
+  | 2, (Expr.letE _ _ _ b _)  => ok b
+  | 0, (Expr.proj _ _ b _)    => ok b
+  | n, (Expr.mdata _ a _)     => viewCoordRaw n a
   | c, e                        => error s!"Bad coordinate {c} for {e}"
 
 open Except in
@@ -139,18 +142,18 @@ def viewRaw (s : SubExpr) : Except String Expr :=
 The subexpression value passed to `k` is not instantiated with respect to the
 array of free variables. -/
 private def viewCoordAux (k : Array Expr → Expr → M α) (fvars: Array Expr) : Nat → Expr → M α
-  | 3, e                        => throwError "Internal: Types should be handled by viewAux"
-  | 0, e@(Expr.app f a _)       => k fvars f
-  | 1, e@(Expr.app f a _)       => k fvars a
-  | 0, e@(Expr.lam n y b _)     => k fvars y
-  | 1, e@(Expr.lam n y b c)     => withLocalDecl n c.binderInfo (y.instantiateRev fvars) fun x => k (fvars.push x) b
-  | 0, e@(Expr.forallE n y b _) => k fvars y
-  | 1, e@(Expr.forallE n y b c) => withLocalDecl n c.binderInfo (y.instantiateRev fvars) fun x => k (fvars.push x) b
-  | 0, e@(Expr.letE n y a b c)  => k fvars y
-  | 1, e@(Expr.letE n y a b c)  => k fvars a
-  | 2, e@(Expr.letE n y a b c)  => withLetDecl n (y.instantiateRev fvars) (a.instantiateRev fvars) fun x => k (fvars.push x) b
-  | 0, e@(Expr.proj _ _ b _)    => k fvars b
-  | n, e@(Expr.mdata _ a _)     => viewCoordAux k fvars n a
+  | 3, _                        => throwError "Internal: Types should be handled by viewAux"
+  | 0, (Expr.app f _ _)       => k fvars f
+  | 1, (Expr.app _ a _)       => k fvars a
+  | 0, (Expr.lam _ y _ _)     => k fvars y
+  | 1, (Expr.lam n y b c)     => withLocalDecl n c.binderInfo (y.instantiateRev fvars) fun x => k (fvars.push x) b
+  | 0, (Expr.forallE _ y _ _) => k fvars y
+  | 1, (Expr.forallE n y b c) => withLocalDecl n c.binderInfo (y.instantiateRev fvars) fun x => k (fvars.push x) b
+  | 0, (Expr.letE _ y _ _ _)  => k fvars y
+  | 1, (Expr.letE _ _ a _ _)  => k fvars a
+  | 2, (Expr.letE n y a b _)  => withLetDecl n (y.instantiateRev fvars) (a.instantiateRev fvars) fun x => k (fvars.push x) b
+  | 0, (Expr.proj _ _ b _)    => k fvars b
+  | n, (Expr.mdata _ a _)     => viewCoordAux k fvars n a
   | c, e                        => throwError "Invalid coordinate {c} for {e}"
 
 private def viewAux (k : Array Expr → Expr → M α) (fvars : Array Expr) : List Nat → Expr → M α
@@ -222,4 +225,4 @@ def ancestorsRaw (s : SubExpr) : List SubExpr := Id.run do
 
 end SubExpr
 
-end Lean.PrettyPrinter.Delaborator
+end Lean
