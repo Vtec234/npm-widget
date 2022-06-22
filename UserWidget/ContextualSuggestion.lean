@@ -1,7 +1,6 @@
 import Lean
 import Lean.Server.Requests
 import Lean.Server.Rpc
-import UserWidget.SubExpr
 import UserWidget.NameMapAttribute -- [todo] use Mathlib.Meta.NameMapAttribute
 
 -- [todo] these functions must exist somewhere but not sure what they are called
@@ -53,7 +52,7 @@ def isTargetLocation : Json → Except String (TargetLocation)
       subexprPos := (← fromJson? j_pos)
     }
 /-- The user clicked somewhere in the hypothesis's type. -/
-def isHypothesisTypeLocation : Json → Except String (MVarId × FVarId × Nat)
+def isHypothesisTypeLocation : Json → Except String (MVarId × FVarId × SubExpr.Pos)
   | j => do
     let Json.arr #[j_goalId, Json.str "hyps",  j_fvarid, "type", j_pos] := j
       | throw s!"{j} is not a hypothesis location"
@@ -154,7 +153,7 @@ private unsafe def getSuggestionProvidersUnsafe [MonadEnv M] [MonadOptions M] [M
   )
 
 @[implementedBy getSuggestionProvidersUnsafe]
-constant getSuggestionProviders [MonadEnv M] [MonadOptions M] [MonadError M] [Monad M]: M (List SuggestionProvider)
+opaque getSuggestionProviders [MonadEnv M] [MonadOptions M] [MonadError M] [Monad M]: M (List SuggestionProvider)
 
 /-- This runs the given tactic with the state given in TacticStateInfo and returns the output info.-/
 def runTacticM (tsi : TacticStateInfo) (t : TacticM α) : IO (α × TacticStateInfo) := do

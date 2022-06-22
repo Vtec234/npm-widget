@@ -76,4 +76,4 @@ unsafe def Lean.evalJsonUnsafe (stx : Syntax) : TermElabM Json := do
 
 open Lean Elab Widget in
 @[implementedBy evalJsonUnsafe]
-constant Lean.evalJson : Syntax → TermElabM Json
+opaque Lean.evalJson : Syntax → TermElabM Json

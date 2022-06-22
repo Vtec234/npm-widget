@@ -4,7 +4,6 @@ import Lean.Server.Rpc.RequestHandling
 import Lean.Elab
 import Lean.Widget.Basic
 
-import UserWidget.WidgetProtocol
 import UserWidget.Util
 import UserWidget.ToHtml.Widget
 
@@ -38,7 +37,7 @@ instance : category (Type u) where
   comp_id' f := rfl
   assoc' f g h := rfl
 
-@[staticJS]
+@[widgetSource]
 def squares : String := include_str "../../widget/dist/squares.js"
 
 syntax (name := squaresTacStx) "squares!" : tactic
@@ -47,7 +46,7 @@ open Lean Elab Tactic in
 def squaresTac : Tactic
   | stx@`(tactic| squares!) => do
     if let some pos := stx.getPos? then
-      Lean.Widget.saveWidget "squares" Json.null stx
+      Lean.Widget.saveWidgetInfo "squares" Json.null stx
   | _ => throwUnsupportedSyntax
 
 open Lean Widget Server
@@ -146,7 +145,7 @@ open Lean Server RequestM in
 def getCommutativeDiagram (args : Lean.Lsp.TextDocumentPositionParams) : RequestM (RequestTask (Option DiagramData)) := do
   let doc ← readDoc
   let pos := doc.meta.text.lspPosToUtf8Pos args.position
-  requestAt args fun snap => do
+  withWaitFindSnapAtPos args fun snap => do
     let g :: _ := snap.infoTree.goalsAt? doc.meta.text pos | return none
     let { ctxInfo := ci, tacticInfo := ti, useAfter := useAfter, .. } := g
     let ci := if useAfter then { ci with mctx := ti.mctxAfter } else { ci with mctx := ti.mctxBefore }

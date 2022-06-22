@@ -1,4 +1,3 @@
-import UserWidget.WidgetProtocol
 import UserWidget.Util
 import UserWidget.ToHtml.Widget
 
@@ -8,9 +7,8 @@ def codefn (s : String) := s!"
     return React.createElement('p', \{}, `This is {s} with props $\{JSON.stringify(props)}`)
   }"
 
-@[staticJS]
+@[widgetSource]
 def widget1 : String := codefn "widget1"
-
 
 syntax (name := widget) "widget!" ident : tactic
 open Lean Elab Tactic in
@@ -19,10 +17,10 @@ def widgetTac : Tactic
   | stx@`(tactic| widget! $n) => do
     if let some pos := stx.getPos? then
       let id := n.getId
-      if  ¬ Lean.Widget.StaticJS.contains (←getEnv) id then
+      if  ¬ Lean.Widget.WidgetSource.contains (←getEnv) id then
         throwError "No widget present named '{id}'"
       let props := Json.mkObj [("pos", pos.byteIdx)]
-      Lean.Widget.saveWidget id props stx
+      Lean.Widget.saveWidgetInfo id props stx
   | _ => throwUnsupportedSyntax
 
 theorem asdf : True := by
