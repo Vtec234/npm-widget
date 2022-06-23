@@ -31,11 +31,11 @@ class category (obj : Type u) extends category_struct.{u,v} obj : Type (max u (v
 
 instance : category (Type u) where
   hom α β := α → β
-  id α := id
+  id _ := id
   comp f g := g ∘ f
-  id_comp' f := rfl
-  comp_id' f := rfl
-  assoc' f g h := rfl
+  id_comp' _ := rfl
+  comp_id' _ := rfl
+  assoc' _ _ _ := rfl
 
 @[widgetSource]
 def squares : String := include_str "../../widget/dist/squares.js"
@@ -45,7 +45,7 @@ open Lean Elab Tactic in
 @[tactic squaresTacStx]
 def squaresTac : Tactic
   | stx@`(tactic| squares!) => do
-    if let some pos := stx.getPos? then
+    if let some _ := stx.getPos? then
       Lean.Widget.saveWidgetInfo "squares" Json.null stx
   | _ => throwUnsupportedSyntax
 
@@ -95,8 +95,8 @@ A f B
 ```
 -/
 structure DiagramData where
-  objs : Array (WithRpcRef ExprWithCtx)
-  homs : Array (WithRpcRef ExprWithCtx)
+  objs : Array CodeWithInfos
+  homs : Array CodeWithInfos
   kind : DiagramKind
   deriving Inhabited, RpcEncoding
 
@@ -107,12 +107,10 @@ def homSquareM? (e : Expr) : MetaM (Option DiagramData) := do
   let some (i, h) := homComp? rhs | return none
   let some (A, B) ← homTypesM? f | return none
   let some (C, D) ← homTypesM? h | return none
-  let ctx ← Elab.ContextInfo.saveNoFileMap
-  let lctx ← getLCtx
-  let withCtx (e : Expr) : WithRpcRef ExprWithCtx := ⟨{ ctx := ctx, lctx := lctx, expr := e }⟩
+  let pp (e : Expr) := ppExprTagged e
   return some {
-    objs := #[withCtx A, withCtx B, withCtx C, withCtx D]
-    homs := #[withCtx f, withCtx g, withCtx h, withCtx i]
+    objs := #[← pp A, ← pp B, ← pp C, ← pp D]
+    homs := #[← pp f, ← pp g, ← pp h, ← pp i]
     kind := .square
   }
 
@@ -120,23 +118,21 @@ def homSquareM? (e : Expr) : MetaM (Option DiagramData) := do
 Otherwise `none`. -/
 def homTriangleM? (e : Expr) : MetaM (Option DiagramData) := do
   let some (_, lhs, rhs) := e.eq? | return none
-  let ctx ← Elab.ContextInfo.saveNoFileMap
-  let lctx ← getLCtx
-  let withCtx (e : Expr) : WithRpcRef ExprWithCtx := ⟨{ ctx := ctx, lctx := lctx, expr := e }⟩
+  let pp (e : Expr) := ppExprTagged e
   if let some (f, g) := homComp? lhs then
     let some (A, C) ← homTypesM? rhs | return none
     let some (_, B) ← homTypesM? f | return none
     return some {
-      objs := #[withCtx A, withCtx B, withCtx C]
-      homs := #[withCtx f, withCtx g, withCtx rhs]
+      objs := #[← pp A, ← pp B, ← pp C]
+      homs := #[← pp f, ← pp g, ← pp rhs]
       kind := .triangle
     }
   let some (f, g) := homComp? rhs | return none
   let some (A, C) ← homTypesM? lhs | return none
   let some (_, B) ← homTypesM? f | return none
   return some {
-    objs := #[withCtx A, withCtx B, withCtx C]
-    homs := #[withCtx f, withCtx g, withCtx lhs]
+    objs := #[← pp A, ← pp B, ← pp C]
+    homs := #[← pp f, ← pp g, ← pp lhs]
     kind := .triangle
   }
 

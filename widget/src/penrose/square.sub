@@ -1,0 +1,14 @@
+Object A,B,C,D
+Cell f := MakeCell(A,B)
+Cell g := MakeCell(B,C)
+
+IsRightHorizontal(f)
+IsDownVertical(g)
+
+Cell h := MakeCell(A,D)
+Cell i := MakeCell(D,C)
+
+IsDownVertical(h)
+IsRightHorizontal(i)
+
+AutoLabel All

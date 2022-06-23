@@ -2,6 +2,7 @@ import { nodeResolve} from '@rollup/plugin-node-resolve'
 import typescript from '@rollup/plugin-typescript';
 import commonjs from '@rollup/plugin-commonjs';
 import replace from '@rollup/plugin-replace';
+import { string } from 'rollup-plugin-string';
 export default {
     input: [
         'src/staticHtml.tsx',
@@ -18,6 +19,13 @@ export default {
         '@lean4/infoview',
     ],
     plugins: [
+        string({
+            include: [
+                '**/*.dsl',
+                '**/*.sty',
+                '**/*.sub'
+            ]
+        }),
         typescript({
             tsconfig: "./tsconfig.json",
             outputToFilesystem: false,
