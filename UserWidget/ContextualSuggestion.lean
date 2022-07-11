@@ -91,7 +91,7 @@ structure Suggestion  where
 def Suggestion.dummy (s : String) : Suggestion := {goals := ⟨#[]⟩, insert := s, display := s}
 
 def Suggestion.ofSyntax (s : Syntax) : CoreM SuggestionBase :=
-  do return {insert := toString $ ← Lean.PrettyPrinter.ppCommand s}
+  do return {insert := toString $ ← Lean.PrettyPrinter.ppCommand (TSyntax.mk s)}
 
 structure ContextualSuggestionQueryResponse where
   completions : Array Suggestion

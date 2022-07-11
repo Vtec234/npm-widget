@@ -1,6 +1,8 @@
+import Lean.Widget.UserWidget
+import Lean.Elab.Eval
+
 import UserWidget.Util
 import UserWidget.ToHtml.Html
-import Lean.Widget.UserWidget
 
 @[widgetSource]
 def staticHtmlWidget : String := include_str "../../widget/dist/staticHtml.js"
@@ -8,9 +10,7 @@ def staticHtmlWidget : String := include_str "../../widget/dist/staticHtml.js"
 open Lean Elab Widget in
 unsafe def evalHtmlUnsafe (stx : Syntax) : TermElabM Html := do
   let htmlT := mkConst ``Html
-  let htExpr ← Term.elabTerm stx htmlT
-  let htExpr ← Meta.instantiateMVars htExpr
-  Term.evalExpr Html ``Html htExpr
+  Term.evalTerm Html htmlT stx
 
 open Lean Elab Widget in
 @[implementedBy evalHtmlUnsafe]

@@ -61,7 +61,7 @@ def casesSuggestionProvider : SuggestionProvider
       -- [todo] in the future you could do rcases etc by selecting a subexpr.
     -- throwError "run cases on {localDecl.userName}"
     return [do
-      let stx ← `(tactic| cases $(mkIdent localDecl.userName))
+      let stx ← `(tactic| cases $(TSyntax.mk <| mkIdent localDecl.userName))
       Lean.Elab.Tactic.evalTactic stx
       Suggestion.ofSyntax stx
     ]

@@ -67,7 +67,7 @@ open Lean Widget Server
 
 /-- Given a hom `f : α ⟶ β`, return `(α, β)`. Otherwise `none`. -/
 def homTypesM? (f : Expr) : MetaM (Option (Expr × Expr)) := do
-  let fTp ← Meta.inferType f >>= Meta.instantiateMVars
+  let fTp ← Meta.inferType f >>= instantiateMVars
   let some (_, _, A, B) := fTp.app4? ``quiver.hom | return none
   return (A, B)
 
@@ -152,7 +152,7 @@ def getCommutativeDiagram (args : Lean.Lsp.TextDocumentPositionParams) : Request
       let lctx := mvarDecl.lctx
       let lctx := lctx.sanitizeNames.run' { options := (← getOptions) }
       Meta.withLCtx lctx mvarDecl.localInstances do
-        let type ← Meta.getMVarType g >>= Meta.instantiateMVars
+        let type ← Meta.getMVarType g >>= instantiateMVars
         if let some d ← homSquareM? type then
           return some d
         if let some d ← homTriangleM? type then
