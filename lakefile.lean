@@ -16,7 +16,7 @@ target packageLock : FilePath :=
 def tsxTarget (tsxName : String) : FileTarget :=
   let jsFile := __dir__ / s!"widget/dist/{tsxName}.js"
   let deps : Array FileTarget := #[
-    inputFileTarget <| __dir__ / s!"widget/{tsxName}.tsx",
+    inputFileTarget <| __dir__ / s!"widget/src/{tsxName}.tsx",
     inputFileTarget <| __dir__ / s!"widget/rollup.config.js",
     packageLock.target
   ]
