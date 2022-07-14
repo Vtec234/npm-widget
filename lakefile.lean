@@ -17,12 +17,13 @@ def tsxTarget (tsxName : String) : FileTarget :=
   let jsFile := __dir__ / s!"widget/dist/{tsxName}.js"
   let deps : Array FileTarget := #[
     inputFileTarget <| __dir__ / s!"widget/dist/{tsxName}.js",
+    inputFileTarget <| __dir__ / s!"widget/rollup.config.js",
     packageLock.target
   ]
   fileTargetWithDepArray jsFile deps fun _srcFile => do
     proc {
       cmd := "npm"
-      args := #["run", "build"]
+      args := #["run", "build", "--", "--tsxName", tsxName]
       cwd := some <| __dir__ / "widget"
     }
 
