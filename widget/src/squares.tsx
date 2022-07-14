@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { RpcSessions } from '@lean4/infoview/infoview/rpcSessions';
-import { DocumentPosition, InteractiveCode, RpcContext, useAsync, CodeWithInfos } from '@lean4/infoview';
+import { DocumentPosition, InteractiveCode, useAsync, RpcContext, CodeWithInfos } from '@lean4/infoview';
 // TODO: can we make relative imports work? We get
 // Unable to resolve specifier '@lean4/infoview/infoview/rpcInterface' imported from blob:vscode-webview://13bu9k5qafb04m5f7smuipoa2rui17ms4t3ilmibfnnsd5h3tg7k/f47b074c-568b-4501-a914-26d9a1ef1194
 // import { CodeWithInfos_registerRefs } from '@lean4/infoview/infoview/rpcInterface';
@@ -50,5 +50,8 @@ export default function({pos}: {pos: DocumentPosition}): React.ReactNode {
         return <CommSquare pos={pos} diag={diag} />
     else if (diag && diag.kind === 'triangle')
         return <CommTriangle pos={pos} diag={diag} />
-    else console.error('Unexpected data ', diag)
+    else
+        // TODO: Why does this case occur initially?
+        console.error('Unexpected data ', diag)
+        return <>Unexpected data: {diag}; error?: {err}</>
 }
