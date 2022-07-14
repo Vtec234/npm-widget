@@ -9,7 +9,7 @@ target packageLock : FilePath :=
   fileTargetWithDep packageLockFile packageFile fun _srcFile => do
     proc {
       cmd := "npm"
-      args := #["install"]
+      args := #["clean-install"]
       cwd := some <| __dir__ / "widget"
     }
 
