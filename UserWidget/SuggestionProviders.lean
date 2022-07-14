@@ -1,6 +1,5 @@
 import UserWidget.ContextualSuggestion
 import UserWidget.PrettyNameGenerator
-#check MonadExcept
 open Lean Elab Tactic Widget Meta PrettyPrinter Delaborator
 
 def focusMainGoal : ContextualSuggestionQueryRequest → TacticM (MVarId × Expr × SubExpr.Pos)
@@ -16,9 +15,9 @@ def focusMainGoal : ContextualSuggestionQueryRequest → TacticM (MVarId × Expr
 @[suggestion_provider]
 def introSuggestionProvider : SuggestionProvider
   | req => do
-    let (goal, goalType, pos) ← focusMainGoal req
+    let (_, goalType, pos) ← focusMainGoal req
     let rootBinder ← Lean.Meta.viewSubexpr (fun _ => binder) pos goalType
-    let abovePis : Array (Name × Expr) ← (Lean.Meta.foldAncestors (fun fvars e i a => do
+    let abovePis : Array (Name × Expr) ← (Lean.Meta.foldAncestors (fun _ e i a => do
       if (i != 1) then throwError "not focussed on body in {e}"
       let b ← binder e
       return a.push b
@@ -39,7 +38,7 @@ def introSuggestionProvider : SuggestionProvider
 @[suggestion_provider]
 def rflSuggestionProvider : SuggestionProvider
   | req => do
-    let (goal, goalType, p) ← focusMainGoal req
+    let (_, _, p) ← focusMainGoal req
     if not p.isRoot then
       throwError "Can only apply rfl to head goal."
     return [do
@@ -65,8 +64,6 @@ def casesSuggestionProvider : SuggestionProvider
       Lean.Elab.Tactic.evalTactic stx
       Suggestion.ofSyntax stx
     ]
-
-
 
 /-- Just a debugging 'suggestion' where it tells you the location that the suggestion was called at. -/
 def loopbackSuggestionProvider : SuggestionProvider

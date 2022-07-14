@@ -4,8 +4,11 @@ import Lean.Elab.Eval
 import UserWidget.Util
 import UserWidget.ToHtml.Html
 
-@[widgetSource]
-def staticHtmlWidget : String := include_str "../../widget/dist/staticHtml.js"
+open Lean Widget in
+@[widget]
+def staticHtmlWidget : UserWidgetDefinition where
+  name := "HTML Display"
+  javascript := include_str "../../widget/dist/staticHtml.js"
 
 open Lean Elab Widget in
 unsafe def evalHtmlUnsafe (stx : Syntax) : TermElabM Html := do

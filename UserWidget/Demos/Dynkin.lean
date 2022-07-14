@@ -85,4 +85,4 @@ instance : ToHtmlFormat (Matrix (Fin n) (Fin n) Int) where
       {Html.element "svg" #[] (M.get_edges_html ++ Matrix.get_nodes_html n).toArray}
     </div>
 
-#html  (ToHtmlFormat.formatHtml cartanMatrix.E₈)
+#html (ToHtmlFormat.formatHtml cartanMatrix.E₈)

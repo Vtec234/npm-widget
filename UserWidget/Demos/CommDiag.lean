@@ -37,8 +37,11 @@ instance : category (Type u) where
   comp_id' _ := rfl
   assoc' _ _ _ := rfl
 
-@[widgetSource]
-def squares : String := include_str "../../widget/dist/squares.js"
+open Lean.Widget in
+@[widget]
+def squares : UserWidgetDefinition where
+  name := "Commutative diagram"
+  javascript := include_str "../../widget/dist/squares.js"
 
 syntax (name := squaresTacStx) "squares!" : tactic
 open Lean Elab Tactic in

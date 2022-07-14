@@ -72,7 +72,8 @@ macro_rules
 open Lean Elab Meta Term in
 unsafe def Lean.evalJsonUnsafe (stx : Syntax) : TermElabM Json := do
   let JsonT := mkConst ``Json
-  Elab.Term.evalTerm Json JsonT (←`(json% $(TSyntax.mk stx)))
+  let jsonStx : TSyntax `jso := TSyntax.mk stx
+  Elab.Term.evalTerm Json JsonT (← `(json% $jsonStx))
 
 open Lean Elab in
 @[implementedBy evalJsonUnsafe]
