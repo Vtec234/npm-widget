@@ -1,4 +1,5 @@
 import * as React from 'react';
+import * as ReactDOM from 'react-dom';
 
 import { RpcSessions } from '@lean4/infoview/infoview/rpcSessions';
 import { DocumentPosition, InteractiveCode, useAsync, RpcContext, CodeWithInfos } from '@lean4/infoview';
@@ -24,7 +25,45 @@ function CommSquare({pos, diag}: {pos: DocumentPosition, diag: DiagramData}): JS
 }
 
 function CommTriangle({pos, diag}: {pos: DocumentPosition, diag: DiagramData}): JSX.Element {
-    return <PenroseCanvas dsl={commutativeDsl} sty={commutativeSty} sub={commutativeTriangleSub} />
+    const [A,B,C] = diag.objs
+    const [f,g,h] = diag.homs
+
+    const mkPortal = (fmt: CodeWithInfos): [React.RefObject<HTMLDivElement>, React.ReactPortal] => {
+        const ref = React.useRef<HTMLDivElement>(null)
+        const codeA = <div className="dib pa2" ref={ref}>
+            <InteractiveCode pos={pos} fmt={fmt} />
+        </div>
+        const elt = ReactDOM.createPortal(codeA, document.body)
+        return [ref, elt];
+    }
+
+    const [refA, eltA] = mkPortal(A)
+    const [refB, eltB] = mkPortal(B)
+    const [refC, eltC] = mkPortal(C)
+    const [reff, eltf] = mkPortal(f)
+    const [refg, eltg] = mkPortal(g)
+    const [refh, elth] = mkPortal(h)
+
+    const domNodes = new Map()
+        .set("A", refA.current)
+        .set("B", refB.current)
+        .set("C", refC.current)
+        .set("f", reff.current)
+        .set("g", refg.current)
+        .set("h", refh.current)
+
+    return <>
+        <PenroseCanvas dsl={commutativeDsl} sty={commutativeSty} sub={commutativeTriangleSub}
+            domNodes={domNodes} />
+        {/* I think we need to "return" the portals to make sure they get rendered.
+        Maybe PenroseCanvas can take them as args and return instead. */}
+        {eltA}
+        {eltB}
+        {eltC}
+        {eltf}
+        {eltg}
+        {elth}
+    </>
 }
 
 function DiagramData_registerRefs(rs: RpcSessions, pos: DocumentPosition, sd: DiagramData) {

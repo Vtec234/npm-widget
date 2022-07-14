@@ -25,17 +25,31 @@ const resolvePath: penrose.PathResolver = async (path: string) => {
     return path
 }
 
-/* TODO(WN):
-    Pass in a map string -> DOM Node where the strings are names of objects in the substance program.
-    Then have the component set the widths of these objects in substance or style
-    (https://github.com/penrose/penrose/issues/1057)
-    to be the widths of their corresponding DOM nodes, and then place the DOM nodes over the objects
-    in the SVG.
-*/
-/** Renders an interactive [Penrose](https://github.com/penrose/penrose) diagram with the specified trio. */
-export function PenroseCanvas({dsl, sty, sub}: PenroseTrio) {
+/** Renders an interactive [Penrose](https://github.com/penrose/penrose) diagram with the specified trio.
+ * 
+ * When `domNodes` is non-empty, for every `(name, elt)` in `domNodes` we locate an object
+ * with the same `name` in the substance program, then adjust the style program so that the
+ * object's dimensions match those of `elt`, and finally "replace" how `name` is drawn in the SVG
+ * with the DOM node `elt`. */
+// TODO link to kc's hack https://github.com/penrose/penrose/issues/1057
+export function PenroseCanvas({dsl, sty, sub, domNodes}: PenroseTrio & {domNodes?: Map<string, Element>}) {
     const el = <pre>Loading..</pre>;
     const [canvas, setCanvas] = React.useState(el);
+
+    if (domNodes) {
+        for (const [name, elt] of domNodes.entries()) {
+            if (!elt) continue
+            const rect = elt.getBoundingClientRect();
+            console.log(name, '=>', elt, '(', rect.width, 'x', rect.height, ')');
+            sty = sty +
+`
+Targettable \`${name}\` {
+   override \`${name}\`.textBox.width = ${rect.width}
+   override \`${name}\`.textBox.height = ${rect.height}
+}
+`
+        }
+    }
 
     const updateDiagramWithError = async (err: any) => {
         const el = <pre>Penrose error: {err.toString()}</pre>;
