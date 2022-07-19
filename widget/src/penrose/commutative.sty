@@ -1,8 +1,3 @@
-canvas {
-    width = 400
-    height = 400
-}
-
 const {
     arrowLen = 150
     curveOffset = 20
@@ -20,13 +15,13 @@ forall Targettable x {
         height : 30
     }
 
-    shape x.text = Equation {
-        center : x.textBox.center
-        string : x.label
-        fontSize : "11pt"
-    }
-
-    x.textLayering = x.text above x.textBox
+    -- Useful for debugging but we don't want it in the actual output.
+    -- shape x.text = Equation {
+    --     center : x.textBox.center
+    --     string : x.label
+    --     fontSize : "11pt"
+    -- }
+    -- x.textLayering = x.text above x.textBox
 
     -- Sides of a targettable for attaching ends of k-cells.
     -- +-T-+
