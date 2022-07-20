@@ -93,26 +93,36 @@ export function PenroseCanvas(
     }
     const [embeds, setEmbeds] = React.useState<Map<string, EmbedData>>(new Map())
 
+    let dim = 400
+    if (containerDiv) {
+        const rect = containerDiv.getBoundingClientRect()
+        dim = Math.ceil(Math.max(400, rect.width))
+    }
+
     React.useEffect(() => {
         console.log("embedNodes eff", embedNodes)
         if (!embedNodes) return
         if (!containerDiv) return
         const newEmbeds: Map<string, EmbedData> = new Map()
         for (const [name, nd] of embedNodes) {
-            const div = <div className="dib absolute" ref={newDiv => {
-                if (!newDiv) return
-                console.log('div eff', newDiv)
-                setEmbeds(embeds => {
-                    const newEmbeds: Map<string, EmbedData> = new Map()
-                    let changed = false
-                    for (const [eName, data] of embeds) {
-                        if (eName === name && data.elt !== newDiv) {
-                            changed = true
-                            newEmbeds.set(eName, {...data, elt: newDiv})
-                        } else newEmbeds.set(eName, data)
-                    }
-                    return changed ? newEmbeds : embeds
-                })
+            const div = <div
+                    className="dib absolute"
+                    // Limit how wide nodes in the diagram can be
+                    style={{maxWidth: `${Math.ceil(dim / 5)}px`}}
+                    ref={newDiv => {
+                        if (!newDiv) return
+                        console.log('div eff', newDiv)
+                        setEmbeds(embeds => {
+                            const newEmbeds: Map<string, EmbedData> = new Map()
+                            let changed = false
+                            for (const [eName, data] of embeds) {
+                                if (eName === name && data.elt !== newDiv) {
+                                    changed = true
+                                    newEmbeds.set(eName, {...data, elt: newDiv})
+                                } else newEmbeds.set(eName, data)
+                            }
+                            return changed ? newEmbeds : embeds
+                        })
             }}>{nd}</div>
             const portal = ReactDOM.createPortal(div, containerDiv, name)
             const data: EmbedData = {
@@ -123,13 +133,7 @@ export function PenroseCanvas(
         }
         setEmbeds(newEmbeds)
     // `deps` must have constant size so we can't do a deeper comparison
-    }, [embedNodes, containerDiv])
-
-    let dim = 400
-    if (containerDiv) {
-        const rect = containerDiv.getBoundingClientRect()
-        dim = Math.ceil(Math.max(400, rect.width))
-    }
+    }, [embedNodes, containerDiv, dim])
 
     sty = sty +
 `
