@@ -30,7 +30,7 @@ instance : OfScientific JsonNumber where
     if exponentSign then
       {mantissa := mantissa, exponent := decimalExponent}
     else
-      {mantissa := mantissa * (10: Nat)^decimalExponent, exponent := 0}
+      {mantissa := (mantissa * 10 ^ decimalExponent : Nat), exponent := 0}
 
 instance : Neg JsonNumber where
   neg jn := ⟨- jn.mantissa, jn.exponent⟩

@@ -20,7 +20,8 @@ class category_struct (obj : Type u) extends quiver.{u,v+1} obj : Type (max u (v
   id   : ∀ X : obj, hom X X
   comp : ∀ {X Y Z : obj}, (X ⟶ Y) → (Y ⟶ Z) → (X ⟶ Z)
 
-notation "𝟙" => category_struct.id -- type as \b1
+-- https://github.com/leanprover/lean4/issues/1367
+prefix:max "𝟙 " => category_struct.id -- type as \b1
 infixr:80 " ≫ " => category_struct.comp -- type as \gg
 
 class category (obj : Type u) extends category_struct.{u,v} obj : Type (max u (v+1)) where
@@ -141,9 +142,9 @@ def homTriangleM? (e : Expr) : MetaM (Option DiagramData) := do
 
 open Lean Server RequestM in
 @[serverRpcMethod]
-def getCommutativeDiagram (args : Lean.Lsp.TextDocumentPositionParams) : RequestM (RequestTask (Option DiagramData)) := do
+def getCommutativeDiagram (args : Lean.Lsp.Position) : RequestM (RequestTask (Option DiagramData)) := do
   let doc ← readDoc
-  let pos := doc.meta.text.lspPosToUtf8Pos args.position
+  let pos := doc.meta.text.lspPosToUtf8Pos args
   withWaitFindSnapAtPos args fun snap => do
     let g :: _ := snap.infoTree.goalsAt? doc.meta.text pos | return none
     let { ctxInfo := ci, tacticInfo := ti, useAfter := useAfter, .. } := g

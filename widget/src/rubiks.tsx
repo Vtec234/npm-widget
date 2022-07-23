@@ -1,8 +1,7 @@
 import * as THREE from 'three';
-import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer'
-import { OrbitControls, Plane, Sphere, Text } from '@react-three/drei'
-import React, { useRef, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
+import * as React from 'react'
+import { Canvas } from '@react-three/fiber'
 
 /*
 Idea: represent the group as

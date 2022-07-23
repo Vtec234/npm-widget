@@ -1,11 +1,7 @@
 import * as React from 'react';
-import * as ReactDOM from 'react-dom';
 
-// import { RpcSessions } from '@lean4/infoview/infoview/rpcSessions';
-import { DocumentPosition, InteractiveCode, useAsync, RpcContext, CodeWithInfos, RpcSessions } from '@lean4/infoview';
-// TODO: can we make relative imports work? We get
-// Unable to resolve specifier '@lean4/infoview/infoview/rpcInterface' imported from blob:vscode-webview://13bu9k5qafb04m5f7smuipoa2rui17ms4t3ilmibfnnsd5h3tg7k/f47b074c-568b-4501-a914-26d9a1ef1194
-// import { CodeWithInfos_registerRefs } from '@lean4/infoview/infoview/rpcInterface';
+import { Position } from 'vscode-languageserver-protocol';
+import { InteractiveCode, useAsync, RpcContext, CodeWithInfos, RpcSessionAtPos, DocumentPosition } from '@lean4/infoview';
 
 import commutativeDsl from './penrose/commutative.dsl';
 import commutativeSty from './penrose/commutative.sty';
@@ -20,13 +16,13 @@ interface DiagramData {
     kind: DiagramKind
 }
 
-function CommSquare({pos, diag}: {pos: DocumentPosition, diag: DiagramData}): JSX.Element {
+function CommSquare({diag}: {diag: DiagramData}): JSX.Element {
     const [A,B,C,D] = diag.objs
     const [f,g,h,i] = diag.homs
 
     const mkElt = (fmt: CodeWithInfos): JSX.Element =>
         <div className="pa2">
-            <InteractiveCode pos={pos} fmt={fmt} />
+            <InteractiveCode fmt={fmt} />
         </div>
 
     const [embedNodes, setEmbedNodes] = React.useState<Map<string, React.ReactNode>>()
@@ -41,7 +37,7 @@ function CommSquare({pos, diag}: {pos: DocumentPosition, diag: DiagramData}): JS
             .set("h", mkElt(h))
             .set("i", mkElt(i))
         setEmbedNodes(embedNodes)
-    }, [pos.uri, pos.line, pos.character, A, B, C, D, f, g, h, i])
+    }, [A, B, C, D, f, g, h, i])
 
     if (!embedNodes) return <></>
     else return <PenroseCanvas
@@ -50,13 +46,13 @@ function CommSquare({pos, diag}: {pos: DocumentPosition, diag: DiagramData}): JS
     />
 }
 
-function CommTriangle({pos, diag}: {pos: DocumentPosition, diag: DiagramData}): JSX.Element {
+function CommTriangle({diag}: {diag: DiagramData}): JSX.Element {
     const [A,B,C] = diag.objs
     const [f,g,h] = diag.homs
 
     const mkElt = (fmt: CodeWithInfos): JSX.Element =>
         <div className="pa2">
-            <InteractiveCode pos={pos} fmt={fmt} />
+            <InteractiveCode fmt={fmt} />
         </div>
 
     const [embedNodes, setEmbedNodes] = React.useState<Map<string, React.ReactNode>>()
@@ -69,7 +65,7 @@ function CommTriangle({pos, diag}: {pos: DocumentPosition, diag: DiagramData}): 
             .set("g", mkElt(g))
             .set("h", mkElt(h))
         setEmbedNodes(embedNodes)
-    }, [pos.uri, pos.line, pos.character, A, B, C, f, g, h])
+    }, [A, B, C, f, g, h])
 
     if (!embedNodes) return <></>
     else return <PenroseCanvas
@@ -78,22 +74,13 @@ function CommTriangle({pos, diag}: {pos: DocumentPosition, diag: DiagramData}): 
     />
 }
 
-function DiagramData_registerRefs(rs: RpcSessions, pos: DocumentPosition, sd: DiagramData) {
-    // for (const o of sd.objs) CodeWithInfos_registerRefs(rs, pos, o)
-    // for (const h of sd.homs) CodeWithInfos_registerRefs(rs, pos, h)
-}
-
-async function getCommutativeDiagram(rs: RpcSessions, pos: DocumentPosition): Promise<DiagramData | undefined> {
-    const ret = await rs.call<DiagramData>(pos, 'getCommutativeDiagram', DocumentPosition.toTdpp(pos))
-    if (ret) DiagramData_registerRefs(rs, pos, ret)
-    return ret
+async function getCommutativeDiagram(rs: RpcSessionAtPos, pos: Position): Promise<DiagramData | undefined> {
+    return rs.call<Position, DiagramData | undefined>('getCommutativeDiagram', pos)
 }
 
 export default function({pos}: {pos: DocumentPosition}): React.ReactNode {
     const rs = React.useContext(RpcContext)
-    const [status, diag, err] = useAsync(
-        () => getCommutativeDiagram(rs, pos),
-        [pos.uri, pos.line, pos.character])
+    const [status, diag, err] = useAsync(() => getCommutativeDiagram(rs, pos), [rs, pos])
 
     let msg = <></>
     if (status === 'pending')
@@ -108,8 +95,8 @@ export default function({pos}: {pos: DocumentPosition}): React.ReactNode {
     return <>
         {msg}
         {diag && diag.kind === 'square' &&
-            <CommSquare pos={pos} diag={diag} />}
+            <CommSquare diag={diag} />}
         {diag && diag.kind === 'triangle' &&
-            <CommTriangle pos={pos} diag={diag} /> }
+            <CommTriangle diag={diag} /> }
     </>
 }
