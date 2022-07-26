@@ -156,7 +156,7 @@ def getCommutativeDiagram (args : Lean.Lsp.Position) : RequestM (RequestTask (Op
       let lctx := mvarDecl.lctx
       let lctx := lctx.sanitizeNames.run' { options := (← getOptions) }
       Meta.withLCtx lctx mvarDecl.localInstances do
-        let type ← Meta.getMVarType g >>= instantiateMVars
+        let type ← g.getType >>= instantiateMVars
         if let some d ← homSquareM? type then
           return some d
         if let some d ← homTriangleM? type then

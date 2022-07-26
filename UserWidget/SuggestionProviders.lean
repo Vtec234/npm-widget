@@ -9,7 +9,7 @@ def focusMainGoal : ContextualSuggestionQueryRequest → TacticM (MVarId × Expr
     if (goal.name != loc.goalId) then
       throwError "main goal does not match {loc.goalId}"
       -- [todo] how to support tactics on non-main goals?
-    let goalType := (← getMVarDecl goal).type
+    let goalType := (← goal.getDecl).type
     return (goal, goalType, loc.subexprPos)
 
 @[suggestion_provider]
@@ -32,7 +32,7 @@ def introSuggestionProvider : SuggestionProvider
     ]
 
   where binder : Expr → TacticM (Name × Expr)
-    | (Expr.forallE n y b _) => pure (n, y)
+    | (Expr.forallE n y _ _) => pure (n, y)
     | e => throwError "{e} is not a binder"
 
 @[suggestion_provider]
@@ -54,7 +54,7 @@ def casesSuggestionProvider : SuggestionProvider
     let (goalId, fvarId, pos) ← liftExcept <| isHypothesisTypeLocation req.loc
     if (goal != goalId) then
       throwError "Not working on main goal not supported yet"
-    let localDecl ← getLocalDecl fvarId
+    let localDecl ← fvarId.getDecl
     if not pos.isRoot then
       throwError "Cases only shown at top subexpr."
       -- [todo] in the future you could do rcases etc by selecting a subexpr.
