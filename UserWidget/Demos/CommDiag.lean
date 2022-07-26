@@ -4,7 +4,6 @@ import Lean.Server.Rpc.RequestHandling
 import Lean.Elab
 import Lean.Widget.Basic
 
-import UserWidget.WidgetProtocol
 import UserWidget.Util
 import UserWidget.ToHtml.Widget
 
@@ -21,7 +20,8 @@ class category_struct (obj : Type u) extends quiver.{u,v+1} obj : Type (max u (v
   id   : ∀ X : obj, hom X X
   comp : ∀ {X Y Z : obj}, (X ⟶ Y) → (Y ⟶ Z) → (X ⟶ Z)
 
-notation "𝟙" => category_struct.id -- type as \b1
+-- https://github.com/leanprover/lean4/issues/1367
+prefix:max "𝟙 " => category_struct.id -- type as \b1
 infixr:80 " ≫ " => category_struct.comp -- type as \gg
 
 class category (obj : Type u) extends category_struct.{u,v} obj : Type (max u (v+1)) where
@@ -32,22 +32,25 @@ class category (obj : Type u) extends category_struct.{u,v} obj : Type (max u (v
 
 instance : category (Type u) where
   hom α β := α → β
-  id α := id
+  id _ := id
   comp f g := g ∘ f
-  id_comp' f := rfl
-  comp_id' f := rfl
-  assoc' f g h := rfl
+  id_comp' _ := rfl
+  comp_id' _ := rfl
+  assoc' _ _ _ := rfl
 
-@[staticJS]
-def squares : String := include_str "../../widget/dist/squares.js"
+open Lean.Widget in
+@[widget]
+def squares : UserWidgetDefinition where
+  name := "Commutative diagram"
+  javascript := include_str "../../widget/dist/squares.js"
 
 syntax (name := squaresTacStx) "squares!" : tactic
 open Lean Elab Tactic in
 @[tactic squaresTacStx]
 def squaresTac : Tactic
   | stx@`(tactic| squares!) => do
-    if let some pos := stx.getPos? then
-      Lean.Widget.saveWidget "squares" Json.null stx
+    if let some _ := stx.getPos? then
+      Lean.Widget.saveWidgetInfo "squares" Json.null stx
   | _ => throwUnsupportedSyntax
 
 open Lean Widget Server
@@ -68,7 +71,7 @@ open Lean Widget Server
 
 /-- Given a hom `f : α ⟶ β`, return `(α, β)`. Otherwise `none`. -/
 def homTypesM? (f : Expr) : MetaM (Option (Expr × Expr)) := do
-  let fTp ← Meta.inferType f >>= Meta.instantiateMVars
+  let fTp ← Meta.inferType f >>= instantiateMVars
   let some (_, _, A, B) := fTp.app4? ``quiver.hom | return none
   return (A, B)
 
@@ -96,8 +99,8 @@ A f B
 ```
 -/
 structure DiagramData where
-  objs : Array (WithRpcRef ExprWithCtx)
-  homs : Array (WithRpcRef ExprWithCtx)
+  objs : Array CodeWithInfos
+  homs : Array CodeWithInfos
   kind : DiagramKind
   deriving Inhabited, RpcEncoding
 
@@ -108,12 +111,10 @@ def homSquareM? (e : Expr) : MetaM (Option DiagramData) := do
   let some (i, h) := homComp? rhs | return none
   let some (A, B) ← homTypesM? f | return none
   let some (C, D) ← homTypesM? h | return none
-  let ctx ← Elab.ContextInfo.saveNoFileMap
-  let lctx ← getLCtx
-  let withCtx (e : Expr) : WithRpcRef ExprWithCtx := ⟨{ ctx := ctx, lctx := lctx, expr := e }⟩
+  let pp (e : Expr) := ppExprTagged e
   return some {
-    objs := #[withCtx A, withCtx B, withCtx C, withCtx D]
-    homs := #[withCtx f, withCtx g, withCtx h, withCtx i]
+    objs := #[← pp A, ← pp B, ← pp C, ← pp D]
+    homs := #[← pp f, ← pp g, ← pp h, ← pp i]
     kind := .square
   }
 
@@ -121,32 +122,30 @@ def homSquareM? (e : Expr) : MetaM (Option DiagramData) := do
 Otherwise `none`. -/
 def homTriangleM? (e : Expr) : MetaM (Option DiagramData) := do
   let some (_, lhs, rhs) := e.eq? | return none
-  let ctx ← Elab.ContextInfo.saveNoFileMap
-  let lctx ← getLCtx
-  let withCtx (e : Expr) : WithRpcRef ExprWithCtx := ⟨{ ctx := ctx, lctx := lctx, expr := e }⟩
+  let pp (e : Expr) := ppExprTagged e
   if let some (f, g) := homComp? lhs then
     let some (A, C) ← homTypesM? rhs | return none
     let some (_, B) ← homTypesM? f | return none
     return some {
-      objs := #[withCtx A, withCtx B, withCtx C]
-      homs := #[withCtx f, withCtx g, withCtx rhs]
+      objs := #[← pp A, ← pp B, ← pp C]
+      homs := #[← pp f, ← pp g, ← pp rhs]
       kind := .triangle
     }
   let some (f, g) := homComp? rhs | return none
   let some (A, C) ← homTypesM? lhs | return none
   let some (_, B) ← homTypesM? f | return none
   return some {
-    objs := #[withCtx A, withCtx B, withCtx C]
-    homs := #[withCtx f, withCtx g, withCtx lhs]
+    objs := #[← pp A, ← pp B, ← pp C]
+    homs := #[← pp f, ← pp g, ← pp lhs]
     kind := .triangle
   }
 
 open Lean Server RequestM in
 @[serverRpcMethod]
-def getCommutativeDiagram (args : Lean.Lsp.TextDocumentPositionParams) : RequestM (RequestTask (Option DiagramData)) := do
+def getCommutativeDiagram (args : Lean.Lsp.Position) : RequestM (RequestTask (Option DiagramData)) := do
   let doc ← readDoc
-  let pos := doc.meta.text.lspPosToUtf8Pos args.position
-  requestAt args fun snap => do
+  let pos := doc.meta.text.lspPosToUtf8Pos args
+  withWaitFindSnapAtPos args fun snap => do
     let g :: _ := snap.infoTree.goalsAt? doc.meta.text pos | return none
     let { ctxInfo := ci, tacticInfo := ti, useAfter := useAfter, .. } := g
     let ci := if useAfter then { ci with mctx := ti.mctxAfter } else { ci with mctx := ti.mctxBefore }
@@ -157,7 +156,7 @@ def getCommutativeDiagram (args : Lean.Lsp.TextDocumentPositionParams) : Request
       let lctx := mvarDecl.lctx
       let lctx := lctx.sanitizeNames.run' { options := (← getOptions) }
       Meta.withLCtx lctx mvarDecl.localInstances do
-        let type ← Meta.getMVarType g >>= Meta.instantiateMVars
+        let type ← g.getType >>= instantiateMVars
         if let some d ← homSquareM? type then
           return some d
         if let some d ← homTriangleM? type then

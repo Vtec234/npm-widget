@@ -1,5 +1,8 @@
 import Lean.Data.Json
-import Lean
+import Lean.Meta.Basic
+import Lean.Elab.Term
+import Lean.Elab.Eval
+
 /-!
 # Json-like syntax for Lean.
 
@@ -27,7 +30,7 @@ instance : OfScientific JsonNumber where
     if exponentSign then
       {mantissa := mantissa, exponent := decimalExponent}
     else
-      {mantissa := mantissa * (10: Nat)^decimalExponent, exponent := 0}
+      {mantissa := (mantissa * 10 ^ decimalExponent : Nat), exponent := 0}
 
 instance : Neg JsonNumber where
   neg jn := ⟨- jn.mantissa, jn.exponent⟩
@@ -59,21 +62,19 @@ macro_rules
   | `(json% -$n:scientific) => `(Lean.Json.num (-$n))
   | `(json% [$[$xs],*])     => `(Lean.Json.arr #[$[json% $xs],*])
   | `(json% {$[$ks:jso_ident : $vs:jso],*}) =>
-    let ks := ks.map fun
+    let ks : Array (TSyntax `term) := ks.map fun
       | `(jso_ident| $k:ident)   => (k.getId |> toString |> quote)
       | `(jso_ident| $k:str)     => k
       | `(jso_ident| $($k:term)) => k
       | stx                      => panic! s!"unrecognized ident syntax {stx}"
     `(Lean.Json.mkObj [$[($ks, json% $vs)],*])
 
-
-open Lean Elab Widget in
+open Lean Elab Meta Term in
 unsafe def Lean.evalJsonUnsafe (stx : Syntax) : TermElabM Json := do
   let JsonT := mkConst ``Json
-  let e ← Term.elabTerm (←`(json% $stx)) JsonT
-  let e ← Meta.instantiateMVars e
-  Term.evalExpr Json ``Json e
+  let jsonStx : TSyntax `jso := TSyntax.mk stx
+  Elab.Term.evalTerm Json JsonT (← `(json% $jsonStx))
 
-open Lean Elab Widget in
+open Lean Elab in
 @[implementedBy evalJsonUnsafe]
-constant Lean.evalJson : Syntax → TermElabM Json
+opaque Lean.evalJson : Syntax → TermElabM Json

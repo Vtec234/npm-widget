@@ -1,8 +1,7 @@
 import * as THREE from 'three';
-import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer'
-import { OrbitControls, Plane, Sphere, Text } from '@react-three/drei'
-import React, { useRef, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
+import * as React from 'react'
+import { Canvas } from '@react-three/fiber'
 
 /*
 Idea: represent the group as
@@ -83,23 +82,24 @@ function generatorToRotation(generator: string, cubelet: string, time = 1.0): TH
   if (generator.includes("⁻¹")) {
     return generatorToRotation(generator.split("⁻¹")[0], cubelet, time).invert()
   }
+  const θ = Math.PI * 0.5 * time
   if (generator == "U" && cubelet[0] == "2") {
-    return new THREE.Matrix4().makeRotationX(Math.PI * 0.5 * time)
+    return new THREE.Matrix4().makeRotationX(θ)
   }
   if (generator == "D" && cubelet[0] == "0") {
-    return new THREE.Matrix4().makeRotationX(Math.PI * 0.5 * time)
+    return new THREE.Matrix4().makeRotationX(θ)
   }
   if (generator == "L" && cubelet[1] == "2") {
-    return new THREE.Matrix4().makeRotationY(- Math.PI * 0.5 * time)
+    return new THREE.Matrix4().makeRotationY(- θ)
   }
   if (generator == "R" && cubelet[1] == "0") {
-    return new THREE.Matrix4().makeRotationY(- Math.PI * 0.5 * time)
+    return new THREE.Matrix4().makeRotationY(- θ)
   }
   if (generator == "F" && cubelet[2] == "2") {
-    return new THREE.Matrix4().makeRotationZ(Math.PI * 0.5 * time)
+    return new THREE.Matrix4().makeRotationZ(θ)
   }
   if (generator == "B" && cubelet[2] == "0") {
-    return new THREE.Matrix4().makeRotationZ(Math.PI * 0.5 * time)
+    return new THREE.Matrix4().makeRotationZ(θ)
   }
   return new THREE.Matrix4()
 }
@@ -112,7 +112,6 @@ function elementToRotation(seq: string[], cubelet: string, time = 1.0): THREE.Ma
   const pos: [number, number, number] = cubelet.split("").map(x => (Number(x) - 1) * (1.0 + 0.1)) as any
   const trans = new THREE.Matrix4().makeTranslation(...pos)
   const m = new THREE.Matrix4()
-  // return m
   let p = {}
   for (let i = 0; i < seq.length; i++) {
     if (i > time * seq.length) {
@@ -134,7 +133,7 @@ function* prod(...iters) {
     yield []
     return
   }
-  let [xs, ...rest] = iters
+  let [xs, ...rest] = iters // [fixme] need to Tee the iters.
   for (let x of xs) {
     for (let ys of prod(...rest)) {
       yield [x, ...ys]
@@ -143,8 +142,6 @@ function* prod(...iters) {
 }
 
 const cubelets = [...prod([0, 1, 2], [0, 1, 2], [0, 1, 2])].map(x => x.join(""))
-
-console.log(cubelets)
 
 function Cubelet(props: any) {
   const me = React.useRef<THREE.Mesh>()

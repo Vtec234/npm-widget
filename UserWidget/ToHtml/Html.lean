@@ -55,7 +55,7 @@ scoped syntax:max jsxElement : term
 macro_rules
   | `(<$n $[$ns = $vs]* />) =>
     let ns := ns.map (quote <| toString ·.getId)
-    let vs := vs.map fun
+    let vs : Array (TSyntax `term) := vs.map fun
       | `(jsxAttrVal| $s:str) => s
       | `(jsxAttrVal| { $t:term }) => t
       | _ => unreachable!
@@ -63,12 +63,12 @@ macro_rules
   | `(<$n $[$ns = $vs]* >$cs*</$m>) =>
     if n.getId == m.getId then do
       let ns := ns.map (quote <| toString ·.getId)
-      let vs := vs.map fun
+      let vs : Array (TSyntax `term) := vs.map fun
         | `(jsxAttrVal| $s:str) => s
         | `(jsxAttrVal| { $t:term }) => t
         | _ => unreachable!
       let cs ← cs.mapM fun
-        | `(jsxChild|$t:jsxText)    => `(Html.text $(quote t[0].getAtomVal!))
+        | `(jsxChild|$t:jsxText)    => `(Html.text $(quote t.raw[0].getAtomVal!))
         -- TODO(WN): elab as list of children if type is `t Html` where `Foldable t`
         | `(jsxChild|{$t})          => return t
         | `(jsxChild|$e:jsxElement) => `($e:jsxElement)
