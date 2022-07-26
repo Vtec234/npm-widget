@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { Position } from 'vscode-languageserver-protocol';
-import { InteractiveCode, useAsync, RpcContext, CodeWithInfos, RpcSessionAtPos, DocumentPosition } from '@lean4/infoview';
+import { InteractiveCode, useAsync, RpcContext, CodeWithInfos, RpcSessionAtPos, DocumentPosition } from '@leanprover/infoview';
 
 import commutativeDsl from './penrose/commutative.dsl';
 import commutativeSty from './penrose/commutative.sty';

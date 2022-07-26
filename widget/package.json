@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@lean4/infoview": "../../vscode-lean4/lean4-infoview/dist/",
+    "@leanprover/infoview": "^0.1.0",
     "@react-three/drei": "^9.5.0",
     "@react-three/fiber": "^8.0.12",
     "plotly.js": "^2.11.1",

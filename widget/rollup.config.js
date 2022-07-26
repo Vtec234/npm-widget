@@ -23,7 +23,7 @@ export default cliArgs => {
     external: [
         'react',
         'react-dom',
-        '@lean4/infoview',
+        '@leanprover/infoview',
     ],
     plugins: [
         string({
