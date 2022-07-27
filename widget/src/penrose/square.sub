@@ -3,12 +3,16 @@ Cell f := MakeCell(A,B)
 Cell g := MakeCell(B,C)
 
 IsRightHorizontal(f)
+IsLabelLeft(f)
 IsDownVertical(g)
+IsLabelLeft(g)
 
 Cell h := MakeCell(A,D)
 Cell i := MakeCell(D,C)
 
 IsDownVertical(h)
+IsLabelRight(h)
 IsRightHorizontal(i)
+IsLabelRight(i)
 
 AutoLabel All

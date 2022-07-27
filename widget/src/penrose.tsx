@@ -135,11 +135,12 @@ export function PenroseCanvas(
     // `deps` must have constant size so we can't do a deeper comparison
     }, [embedNodes, containerDiv, dim])
 
+    // TODO: can the canvas dynamically adjust its size to the diagram size?
     sty = sty +
 `
 canvas {
     width = ${dim}
-    height = ${dim}
+    height = ${Math.ceil(dim/2)}
 }
 `
 

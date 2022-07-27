@@ -1,19 +1,34 @@
 const {
     arrowLen = 150
     curveOffset = 20
+    labelOffset = 10
     -- Arrowheads on Bezier curves encroach a bit on the target.
     -- We shorten them by this much.
     curveEndAdjust = 4
 }
 
 forall Targettable x {
+    -- We define a `center` where cells targetting this targettable start/end,
+    -- and a `textBoxCenter` where the label is. These may differ in cells when
+    -- the label is placed to the side.
     vec2 x.center = (?, ?)
+    vec2 x.textBoxCenter = x.center
 
     shape x.textBox = Rectangle {
-        center : x.center
+        center : x.textBoxCenter
+        -- Default size, will be overwritten dynamically
         width : 50
         height : 30
     }
+
+    -- Sides of a Targettable for attaching ends of k-cells.
+    -- +-T-+
+    -- L   R
+    -- +-B-+
+    vec2 x.left = x.center - (x.textBox.width / 2, 0)
+    vec2 x.right = x.center + (x.textBox.width / 2, 0)
+    vec2 x.top = x.center + (0, x.textBox.height / 2)
+    vec2 x.bottom = x.center - (0, x.textBox.height / 2)
 
     -- Useful for debugging but we don't want it in the actual output.
     -- shape x.text = Equation {
@@ -22,26 +37,27 @@ forall Targettable x {
     --     fontSize : "11pt"
     -- }
     -- x.textLayering = x.text above x.textBox
+}
 
-    -- Sides of a targettable for attaching ends of k-cells.
-    -- +-T-+
-    -- L   R
-    -- +-B-+
-    vec2 x.left = x.center - (x.textBox.width / 2, 0)
-    vec2 x.right = x.center + (x.textBox.width / 2, 0)
-    vec2 x.top = x.center + (0, x.textBox.height / 2)
-    vec2 x.bottom = x.center - (0, x.textBox.height / 2)
+-- Draw diagram towards top-left
+forall Object A {
+    encourage minimal(A.center[0])
+    encourage maximal(A.center[1])
 }
 
 forall Cell f; Targettable A; Targettable B
 where f := MakeCell(A, B) {
     vec2 f.start = (?, ?)
     vec2 f.end = (?, ?)
+    vec2 f.mid = (f.start + f.end) / 2
+    vec2 f.dir = normalize(f.end - f.start)
 
     ensure inRange(f.start[0], A.left[0], A.right[0])
     ensure inRange(f.start[1], A.top[1], A.bottom[1])
     ensure inRange(f.end[0], B.left[0], B.right[0])
     ensure inRange(f.end[1], B.top[1], B.bottom[1])
+
+    override f.center = f.mid
 
     shape f.shape = Line {
         start: f.start
@@ -53,11 +69,15 @@ where f := MakeCell(A, B) {
     -- Make arrows short
     encourage minimal(normsq(f.end - f.start))
 
-    -- Override center
-    override f.center = (f.start + f.end) / 2
-
+    f.cellTextLayering = f.textBox above f.shape
     f.cellTextLayeringA = A.textBox above f.shape
     f.cellTextLayeringB = B.textBox above f.shape
+}
+
+forall Cell a; Cell f; Cell g
+where a := MakeCell(f, g) {
+    -- TODO: need a custom svg function to create nice double arrow for 2-cells
+    -- TODO: similarly with predicates for monos, epis, etc.
 }
 
 forall Cell f; Object A; Object B
@@ -89,18 +109,31 @@ where f := MakeCell(A, B); IsDownVertical(f) {
 }
 
 forall Cell f; Object A; Object B
+where f := MakeCell(A, B); IsLeftUpDiagonal(f) {
+    override B.center = A.center + (-const.arrowLen, const.arrowLen)
+}
+
+forall Cell f; Object A; Object B
+where f := MakeCell(A, B); IsLeftDownDiagonal(f) {
+    override B.center = A.center + (-const.arrowLen, -const.arrowLen)
+}
+
+forall Cell f; Object A; Object B
+where f := MakeCell(A, B); IsRightUpDiagonal(f) {
+    override B.center = A.center + (const.arrowLen, const.arrowLen)
+}
+
+forall Cell f; Object A; Object B
 where f := MakeCell(A, B); IsRightDownDiagonal(f) {
     override B.center = A.center + (const.arrowLen, -const.arrowLen)
 }
 
 forall Cell f; Targettable A; Targettable B
 where f := MakeCell(A, B); IsCurvedLeft(f) {
-    vec2 dir = normalize(f.end - f.start)
-    vec2 dirLeft = rot90(dir)
-    vec2 mid = (f.end + f.start) / 2
-    override f.center = mid + dirLeft * const.curveOffset
+    vec2 dirLeft = rot90(f.dir)
+    override f.center = f.mid + dirLeft * const.curveOffset
     override f.shape = Path {
-        d: interpolateQuadraticFromPoints("open", f.start, f.center, f.end - dir*const.curveEndAdjust)
+        d: interpolateQuadraticFromPoints("open", f.start, f.center, f.end - f.dir * const.curveEndAdjust)
         endArrowhead: true
         strokeColor: rgba(0,0,0,100)
     }
@@ -108,60 +141,23 @@ where f := MakeCell(A, B); IsCurvedLeft(f) {
 
 forall Cell f; Targettable A; Targettable B
 where f := MakeCell(A, B); IsCurvedRight(f) {
-    vec2 dir = normalize(f.end - f.start)
-    vec2 dirRight = rot90(rot90(rot90(dir))) -- lol
-    vec2 mid = (f.end + f.start) / 2
-    override f.center = mid + dirRight * const.curveOffset
+    vec2 dirRight = rot90(rot90(rot90(f.dir))) -- lol
+    override f.center = f.mid + dirRight * const.curveOffset
     override f.shape = Path {
-        d: interpolateQuadraticFromPoints("open", f.start, f.center, f.end - dir*const.curveEndAdjust)
+        d: interpolateQuadraticFromPoints("open", f.start, f.center, f.end - f.dir * const.curveEndAdjust)
         endArrowhead: true
         strokeColor: rgba(0,0,0,100)
     }
 }
 
-forall Cell a; Cell f; Cell g
-where a := MakeCell(f, g) {
-    -- TODO: need a custom svg function to create nice double arrow
+forall Cell f; Targettable A; Targettable B
+where f := MakeCell(A, B); IsLabelLeft(f) {
+    vec2 dirLeft = rot90(f.dir)
+    override f.textBoxCenter = f.center + dirLeft * const.labelOffset
 }
 
--- TODO: similarly for monos, epis, etc.
-
--- forall Cell f; Object A; Object B
--- where f := MakeCell(A, B); FromLeft(f) {
---     override f.startX = A.left[0]
--- }
-
--- forall Cell f; Object A; Object B
--- where f := MakeCell(A, B); ToLeft(f) {
---     override f.endX = B.left[0]
--- }
-
--- forall Cell f; Object A; Object B
--- where f := MakeCell(A, B); FromRight(f) {
---     override f.startX = A.right[0]
--- }
-
--- forall Cell f; Object A; Object B
--- where f := MakeCell(A, B); ToRight(f) {
---     override f.endX = B.right[0]
--- }
-
--- forall Cell f; Object A; Object B
--- where f := MakeCell(A, B); FromTop(f) {
---     override f.startY = A.top[1]
--- }
-
--- forall Cell f; Object A; Object B
--- where f := MakeCell(A, B); ToTop(f) {
---     override f.endY = B.top[1]
--- }
-
--- forall Cell f; Object A; Object B
--- where f := MakeCell(A, B); FromBottom(f) {
---     override f.startY = A.bottom[1]
--- }
-
--- forall Cell f; Object A; Object B
--- where f := MakeCell(A, B); ToBottom(f) {
---     override f.endY = B.bottom[1]
--- }
+forall Cell f; Targettable A; Targettable B
+where f := MakeCell(A, B); IsLabelRight(f) {
+    vec2 dirRight = rot90(rot90(rot90(f.dir)))
+    override f.textBoxCenter = f.center + dirRight * const.labelOffset
+}
