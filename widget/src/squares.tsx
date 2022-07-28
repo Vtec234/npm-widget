@@ -42,7 +42,7 @@ function CommSquare({diag}: {diag: DiagramData}): JSX.Element {
     if (!embedNodes) return <></>
     else return <PenroseCanvas
         dsl={commutativeDsl} sty={commutativeSty} sub={commutativeSquareSub}
-        embedNodes={embedNodes} nOptSteps={5}
+        embedNodes={embedNodes} maxOptSteps={500}
     />
 }
 
@@ -70,7 +70,7 @@ function CommTriangle({diag}: {diag: DiagramData}): JSX.Element {
     if (!embedNodes) return <></>
     else return <PenroseCanvas
         dsl={commutativeDsl} sty={commutativeSty} sub={commutativeTriangleSub}
-        embedNodes={embedNodes} nOptSteps={5}
+        embedNodes={embedNodes} maxOptSteps={500}
     />
 }
 

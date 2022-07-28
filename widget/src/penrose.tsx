@@ -25,11 +25,46 @@ function DomElements<T>({children, ref: fwdRef}: React.PropsWithChildren<{ref?: 
 }
 
 type PenroseCanvasCoreProps = PenroseTrio &
-    {nOptSteps: number, onSvgDrawn: (_: SVGSVGElement) => void}
+    {maxOptSteps: number, onSvgDrawn: (_: SVGSVGElement) => void}
+
+const preparedStateCache = new Map<string, penrose.PenroseState>()
+
+async function hashTrio({dsl, sty, sub}: PenroseTrio): Promise<string> {
+    // https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder/encodeInto#buffer_sizing
+    const data = new Uint8Array(3 * (dsl.length + sty.length + sub.length))
+    const encoder = new TextEncoder()
+    let dataView = data
+    const {written} = encoder.encodeInto(dsl, dataView)
+    dataView = data.subarray(written)
+    const {written: written2} = encoder.encodeInto(sty, dataView)
+    dataView = data.subarray(written2)
+    encoder.encodeInto(sub, dataView)
+    const digest = await crypto.subtle.digest("SHA-1", data)
+    const digestArr = Array.from(new Uint8Array(digest))
+    // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest#converting_a_digest_to_a_hex_string
+    return digestArr.map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+async function compileAndPrepareTrio(trio: PenroseTrio): Promise<penrose.PenroseState> {
+    const hash = await hashTrio(trio)
+    if (preparedStateCache.has(hash)) {
+        console.log('cache hit.')
+        return preparedStateCache.get(hash)!
+    } 
+    console.log('cache miss.')
+    const {dsl, sty, sub} = trio
+    const compileRes = penrose.compileTrio({ domain: dsl, style: sty, substance: sub, variation: '' })
+    if (compileRes.isErr()) throw new Error(penrose.showError(compileRes.error))
+    const state = await penrose.prepareState(compileRes.value)
+    preparedStateCache.set(hash, state)
+    return state
+
+    // TODO: cache the entire SVG?
+}
 
 /** `onSvgDrawn` is called when the diagram has been drawn successfully AND is no longer updating. */
 function PenroseCanvasCore(
-    {dsl, sty, sub, nOptSteps, onSvgDrawn}: PenroseCanvasCoreProps)
+    {dsl, sty, sub, maxOptSteps, onSvgDrawn}: PenroseCanvasCoreProps)
     : JSX.Element
 {
     const [canvas, setCanvas] = React.useState(<pre>Drawing..</pre>)
@@ -41,9 +76,9 @@ function PenroseCanvasCore(
 
     const updateDiagram = async (state: penrose.PenroseState) => {
         try {
-            state = penrose.stepUntilConvergence(state, nOptSteps).unsafelyUnwrap()
+            state = penrose.stepUntilConvergence(state, maxOptSteps).unsafelyUnwrap()
             if (!penrose.stateConverged(state))
-                console.warn(`Diagram failed to converge in ${nOptSteps} steps`)
+                console.warn(`Diagram failed to converge in ${maxOptSteps} steps`)
             const svg = await penrose.RenderStatic(state, async path => path)
             const el = <DomElements>{svg}</DomElements>
             setCanvas(el)
@@ -55,14 +90,8 @@ function PenroseCanvasCore(
 
     React.useEffect(() => {
         try {
-            const compileRes = penrose.compileTrio({ domain: dsl, style: sty, substance: sub, variation: '' })
-            if (compileRes.isOk()) {
-                penrose.prepareState(compileRes.value)
-                    .then(updateDiagram, ex => updateDiagramWithError(ex.toString()))
-            } else {
-                const err = penrose.showError(compileRes.error)
-                updateDiagramWithError(err)
-            }
+            compileAndPrepareTrio({dsl, sty, sub})
+                .then(updateDiagram, ex => updateDiagramWithError(ex.toString()))
         } catch (ex: any) {
             updateDiagramWithError(ex.toString())
         }
@@ -74,10 +103,10 @@ function PenroseCanvasCore(
 }
 
 export type PenroseCanvasProps = PenroseTrio &
-    {nOptSteps: number, embedNodes: Map<string, React.ReactNode>}
+    {maxOptSteps: number, embedNodes: Map<string, React.ReactNode>}
 
 /** Renders an interactive [Penrose](https://github.com/penrose/penrose) diagram with the specified trio.
- * The Penrose optimizer is ran for `nOptSteps`, a heuristic for how difficult the diagram is to draw.
+ * The Penrose optimizer is ran for at most `maxOptSteps`, a heuristic for when to stop trying.
  * 
  * For every `[name, nd]` in `embedNodes` we locate an object with the same `name` in the substance
  * program, then adjust the style program so that the object's dimensions match those of `nd`,
@@ -87,7 +116,7 @@ export type PenroseCanvasProps = PenroseTrio &
  * you must re-create it. */
 // TODO link to kc's hack https://github.com/penrose/penrose/issues/1057
 export function PenroseCanvas(
-        {dsl, sty, sub, nOptSteps, embedNodes}: PenroseCanvasProps)
+        {dsl, sty, sub, maxOptSteps, embedNodes}: PenroseCanvasProps)
         : JSX.Element {
     const [containerDiv, setContainerDiv] = React.useState<HTMLDivElement | null>(null)
 
@@ -203,7 +232,7 @@ override \`${name}\`.textBox.fillColor = ${boxCol}
     }, [diagramBoxes, embeds, containerDiv])
 
     return <div className="relative" ref={setContainerDiv}>
-        <PenroseCanvasCore dsl={dsl} sty={sty} sub={sub} nOptSteps={nOptSteps} onSvgDrawn={onSvgDrawn} />
+        <PenroseCanvasCore dsl={dsl} sty={sty} sub={sub} maxOptSteps={maxOptSteps} onSvgDrawn={onSvgDrawn} />
         {Array.from(embeds.values()).map(({portal}) => portal)}
     </div>
 }
