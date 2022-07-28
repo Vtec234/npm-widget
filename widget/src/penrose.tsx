@@ -27,7 +27,10 @@ function DomElements<T>({children, ref: fwdRef}: React.PropsWithChildren<{ref?: 
 type PenroseCanvasCoreProps = PenroseTrio &
     {maxOptSteps: number, onSvgDrawn: (_: SVGSVGElement) => void}
 
-const preparedStateCache = new Map<string, penrose.PenroseState>()
+/** The compile -> optimize -> prepare SVG sequence is not cheap (on the order of 1s for a simple diagram),
+ * so we aggressively cache its SVG outputs. */
+// TODO(WN): provide a "redraw" button to resample a misshapen diagram.
+const diagramSvgCache = new Map<string, SVGSVGElement>()
 
 async function hashTrio({dsl, sty, sub}: PenroseTrio): Promise<string> {
     // https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder/encodeInto#buffer_sizing
@@ -45,24 +48,23 @@ async function hashTrio({dsl, sty, sub}: PenroseTrio): Promise<string> {
     return digestArr.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-async function compileAndPrepareTrio(trio: PenroseTrio): Promise<penrose.PenroseState> {
+async function renderPenroseTrio(trio: PenroseTrio, maxOptSteps: number): Promise<SVGSVGElement> {
     const hash = await hashTrio(trio)
-    if (preparedStateCache.has(hash)) {
-        console.log('cache hit.')
-        return preparedStateCache.get(hash)!
-    } 
-    console.log('cache miss.')
+    if (diagramSvgCache.has(hash)) return diagramSvgCache.get(hash)!
     const {dsl, sty, sub} = trio
     const compileRes = penrose.compileTrio({ domain: dsl, style: sty, substance: sub, variation: '' })
     if (compileRes.isErr()) throw new Error(penrose.showError(compileRes.error))
     const state = await penrose.prepareState(compileRes.value)
-    preparedStateCache.set(hash, state)
-    return state
-
-    // TODO: cache the entire SVG?
+    const stateRes = penrose.stepUntilConvergence(state, maxOptSteps)
+    if (stateRes.isErr()) throw new Error(penrose.showError(stateRes.error))
+    if (!penrose.stateConverged(stateRes.value))
+        console.warn(`Diagram failed to converge in ${maxOptSteps} steps`)
+    const svg = await penrose.RenderStatic(stateRes.value, async path => path)
+    diagramSvgCache.set(hash, svg)
+    return svg
 }
 
-/** `onSvgDrawn` is called when the diagram has been drawn successfully AND is no longer updating. */
+/** `onSvgDrawn` is called whenever a new SVG has been produced. */
 function PenroseCanvasCore(
     {dsl, sty, sub, maxOptSteps, onSvgDrawn}: PenroseCanvasCoreProps)
     : JSX.Element
@@ -74,12 +76,8 @@ function PenroseCanvasCore(
         setCanvas(el)
     }
 
-    const updateDiagram = async (state: penrose.PenroseState) => {
+    const updateDiagram = async (svg: SVGSVGElement) => {
         try {
-            state = penrose.stepUntilConvergence(state, maxOptSteps).unsafelyUnwrap()
-            if (!penrose.stateConverged(state))
-                console.warn(`Diagram failed to converge in ${maxOptSteps} steps`)
-            const svg = await penrose.RenderStatic(state, async path => path)
             const el = <DomElements>{svg}</DomElements>
             setCanvas(el)
             onSvgDrawn(svg)
@@ -90,7 +88,7 @@ function PenroseCanvasCore(
 
     React.useEffect(() => {
         try {
-            compileAndPrepareTrio({dsl, sty, sub})
+            renderPenroseTrio({dsl, sty, sub}, maxOptSteps)
                 .then(updateDiagram, ex => updateDiagramWithError(ex.toString()))
         } catch (ex: any) {
             updateDiagramWithError(ex.toString())
@@ -115,6 +113,7 @@ export type PenroseCanvasProps = PenroseTrio &
  * This component relies on the length of `embedNodes` never changing! If it changes,
  * you must re-create it. */
 // TODO link to kc's hack https://github.com/penrose/penrose/issues/1057
+// TODO: refactor this logic
 export function PenroseCanvas(
         {dsl, sty, sub, maxOptSteps, embedNodes}: PenroseCanvasProps)
         : JSX.Element {
