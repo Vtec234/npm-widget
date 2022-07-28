@@ -42,7 +42,7 @@ function CommSquare({diag}: {diag: DiagramData}): JSX.Element {
     if (!embedNodes) return <></>
     else return <PenroseCanvas
         dsl={commutativeDsl} sty={commutativeSty} sub={commutativeSquareSub}
-        embedNodes={embedNodes}
+        embedNodes={embedNodes} nOptSteps={5}
     />
 }
 
@@ -70,7 +70,7 @@ function CommTriangle({diag}: {diag: DiagramData}): JSX.Element {
     if (!embedNodes) return <></>
     else return <PenroseCanvas
         dsl={commutativeDsl} sty={commutativeSty} sub={commutativeTriangleSub}
-        embedNodes={embedNodes}
+        embedNodes={embedNodes} nOptSteps={5}
     />
 }
 
@@ -84,19 +84,19 @@ export default function({pos}: {pos: DocumentPosition}): React.ReactNode {
 
     let msg = <></>
     if (status === 'pending')
-        msg = <>Loading...</>
+        msg = <>Loading diagram..</>
     else if (status === 'rejected')
         msg = <>Error: {JSON.stringify(err)}</>
     else if (status === 'fulfilled' && !diag)
-        msg = <>No diagram.</>
+        msg = <>Error: no diagram.</>
 
     // We keep the diagrams alive to avoid a re-render when the cursor moves
     // to a position containing the same diagram.
     return <>
-        {msg}
         {diag && diag.kind === 'square' &&
             <CommSquare diag={diag} />}
         {diag && diag.kind === 'triangle' &&
             <CommTriangle diag={diag} /> }
+        {msg}
     </>
 }

@@ -1,7 +1,6 @@
 import * as React from "react"
 import * as ReactDOM from "react-dom"
 import * as penrose from "@penrose/core"
-import { List } from "@svgdotjs/svg.js"
 
 /** See [here](https://penrose.gitbook.io/penrose/#what-makes-up-a-penrose-program) for explanation. */
 interface PenroseTrio {
@@ -25,12 +24,15 @@ function DomElements<T>({children, ref: fwdRef}: React.PropsWithChildren<{ref?: 
     }}></div>
 }
 
+type PenroseCanvasCoreProps = PenroseTrio &
+    {nOptSteps: number, onSvgDrawn: (_: SVGSVGElement) => void}
+
 /** `onSvgDrawn` is called when the diagram has been drawn successfully AND is no longer updating. */
 function PenroseCanvasCore(
-    {dsl, sty, sub, onSvgDrawn}: PenroseTrio & {onSvgDrawn: (_: SVGSVGElement) => void})
+    {dsl, sty, sub, nOptSteps, onSvgDrawn}: PenroseCanvasCoreProps)
     : JSX.Element
 {
-    const [canvas, setCanvas] = React.useState(<pre>Loading..</pre>)
+    const [canvas, setCanvas] = React.useState(<pre>Drawing..</pre>)
 
     const updateDiagramWithError = async (err: string) => {
         const el = <pre>Penrose error: {err}</pre>
@@ -38,11 +40,10 @@ function PenroseCanvasCore(
     }
 
     const updateDiagram = async (state: penrose.PenroseState) => {
-        const nSteps = 500
         try {
-            state = penrose.stepUntilConvergence(state, nSteps).unsafelyUnwrap()
+            state = penrose.stepUntilConvergence(state, nOptSteps).unsafelyUnwrap()
             if (!penrose.stateConverged(state))
-                console.warn(`Diagram failed to converge in ${nSteps} steps`)
+                console.warn(`Diagram failed to converge in ${nOptSteps} steps`)
             const svg = await penrose.RenderStatic(state, async path => path)
             const el = <DomElements>{svg}</DomElements>
             setCanvas(el)
@@ -72,18 +73,21 @@ function PenroseCanvasCore(
     return canvas
 }
 
+export type PenroseCanvasProps = PenroseTrio &
+    {nOptSteps: number, embedNodes: Map<string, React.ReactNode>}
+
 /** Renders an interactive [Penrose](https://github.com/penrose/penrose) diagram with the specified trio.
+ * The Penrose optimizer is ran for `nOptSteps`, a heuristic for how difficult the diagram is to draw.
  * 
- * For every `[name, nd]` in `embedNodes` we locate an object
- * with the same `name` in the substance program, then adjust the style program so that the
- * object's dimensions match those of `nd`, and finally "replace" how `name` is drawn in the SVG
- * with the React node `nd`.
+ * For every `[name, nd]` in `embedNodes` we locate an object with the same `name` in the substance
+ * program, then adjust the style program so that the object's dimensions match those of `nd`,
+ * and finally draw the React node `nd` over `name` in the SVG.
  * 
  * This component relies on the length of `embedNodes` never changing! If it changes,
  * you must re-create it. */
 // TODO link to kc's hack https://github.com/penrose/penrose/issues/1057
 export function PenroseCanvas(
-        {dsl, sty, sub, embedNodes}: PenroseTrio & {embedNodes: Map<string, React.ReactNode>})
+        {dsl, sty, sub, nOptSteps, embedNodes}: PenroseCanvasProps)
         : JSX.Element {
     const [containerDiv, setContainerDiv] = React.useState<HTMLDivElement | null>(null)
 
@@ -100,7 +104,6 @@ export function PenroseCanvas(
     }
 
     React.useEffect(() => {
-        console.log("embedNodes eff", embedNodes)
         if (!embedNodes) return
         if (!containerDiv) return
         const newEmbeds: Map<string, EmbedData> = new Map()
@@ -111,7 +114,6 @@ export function PenroseCanvas(
                     style={{maxWidth: `${Math.ceil(dim / 5)}px`}}
                     ref={newDiv => {
                         if (!newDiv) return
-                        console.log('div eff', newDiv)
                         setEmbeds(embeds => {
                             const newEmbeds: Map<string, EmbedData> = new Map()
                             let changed = false
@@ -173,7 +175,6 @@ override \`${name}\`.textBox.fillColor = ${boxCol}
     // Store the boxes that we can draw interactive elements over
     const [diagramBoxes, setDiagramBoxes] = React.useState<Map<string, Element>>()
     const onSvgDrawn = React.useMemo(() => {
-        console.log('recompute onSvgDrawn')
         return (svg: SVGSVGElement) => {
             const diagramBoxes = new Map<string, Element>()
             for (const gElt of svg.querySelectorAll("g, rect")) {
@@ -189,7 +190,6 @@ override \`${name}\`.textBox.fillColor = ${boxCol}
     React.useEffect(() => {
         if (!diagramBoxes) return
         if (!containerDiv) return
-        console.log('repositioning')
         for (const [name, gElt] of diagramBoxes) {
             const embed = embeds.get(name)
             if (!embed) continue
@@ -203,7 +203,7 @@ override \`${name}\`.textBox.fillColor = ${boxCol}
     }, [diagramBoxes, embeds, containerDiv])
 
     return <div className="relative" ref={setContainerDiv}>
-        <PenroseCanvasCore dsl={dsl} sty={sty} sub={sub} onSvgDrawn={onSvgDrawn} />
+        <PenroseCanvasCore dsl={dsl} sty={sty} sub={sub} nOptSteps={nOptSteps} onSvgDrawn={onSvgDrawn} />
         {Array.from(embeds.values()).map(({portal}) => portal)}
     </div>
 }
