@@ -1,7 +1,7 @@
 const {
     arrowLen = 150
     curveOffset = 20
-    labelOffset = 10
+    labelOffsetFrac = 0.3
     -- Arrowheads on Bezier curves encroach a bit on the target.
     -- We shorten them by this much.
     curveEndAdjust = 4
@@ -16,6 +16,7 @@ forall Targettable x {
 
     shape x.textBox = Rectangle {
         center : x.textBoxCenter
+        cornerRadius : 5
         -- Default size, will be overwritten dynamically
         width : 50
         height : 30
@@ -153,11 +154,15 @@ where f := MakeCell(A, B); IsCurvedRight(f) {
 forall Cell f; Targettable A; Targettable B
 where f := MakeCell(A, B); IsLabelLeft(f) {
     vec2 dirLeft = rot90(f.dir)
-    override f.textBoxCenter = f.center + dirLeft * const.labelOffset
+    -- Distance from arrow midpoint to `dirLeft` point on box if the box were an ellipse
+    float dist = norm((dirLeft[0] * f.textBox.width, dirLeft[1] * f.textBox.height))
+    override f.textBoxCenter = f.center + dirLeft * dist * const.labelOffsetFrac
 }
 
 forall Cell f; Targettable A; Targettable B
 where f := MakeCell(A, B); IsLabelRight(f) {
     vec2 dirRight = rot90(rot90(rot90(f.dir)))
-    override f.textBoxCenter = f.center + dirRight * const.labelOffset
+    -- Distance from arrow midpoint to `dirRight` point on box if the box were an ellipse
+    float dist = norm((dirRight[0] * f.textBox.width, dirRight[1] * f.textBox.height))
+    override f.textBoxCenter = f.center + dirRight * dist * const.labelOffsetFrac
 }

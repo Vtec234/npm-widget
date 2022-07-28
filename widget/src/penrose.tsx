@@ -144,15 +144,28 @@ canvas {
 }
 `
 
+    const cssColourToRgba = (col: string, alpha: number = 255) => {
+        if (col.startsWith('#')) {
+            const gps = col.match(/\w\w/g)
+            if (!gps) throw new Error(`cannot parse colour '${col}'`)
+            const [r, g, b] = gps.map(x => parseInt(x, 16))
+            return `rgba(${r}/255,${g}/255,${b}/255,${alpha}/255)`
+        } else throw new Error(`cannot parse colour '${col}'`)
+    }
+
+    const boxCol = cssColourToRgba(
+        getComputedStyle(document.documentElement)
+            .getPropertyValue('--vscode-editorHoverWidget-background'))
+    
     for (const [name, {elt}] of embeds) {
         if (!elt) continue
         const rect = elt.getBoundingClientRect()
-        // console.log(name, '=>', elt, '(', rect.width, 'x', rect.height, ')')
         sty = sty +
 `
 Targettable \`${name}\` {
 override \`${name}\`.textBox.width = ${Math.ceil(rect.width)}
 override \`${name}\`.textBox.height = ${Math.ceil(rect.height)}
+override \`${name}\`.textBox.fillColor = ${boxCol}
 }
 `
     }
