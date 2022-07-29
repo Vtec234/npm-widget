@@ -3,34 +3,11 @@ import * as ReactDOM from "react-dom"
 import * as penrose from "@penrose/core"
 
 /** See [here](https://penrose.gitbook.io/penrose/#what-makes-up-a-penrose-program) for explanation. */
-interface PenroseTrio {
+export interface PenroseTrio {
     dsl: string
     sty: string
     sub: string
 }
-
-/** Renders vanilla DOM `Node`s (https://filipmolcik.com/react-children-vanilla-html-element/). */
-function DomElements<T>({children, ref: fwdRef}: React.PropsWithChildren<{ref?: React.Ref<T>}>) {
-    // TODO: set the fwdRef here
-    // TODO: maybe use a simpler DomElements, there is only one child
-    return <div ref={ref => {
-        if (!ref) return
-        if (!children) return
-        if (ref.firstChild !== null) {
-            ref.replaceChild(children as any, ref.firstChild)
-        } else {
-            ref.appendChild(children as any)
-        }
-    }}></div>
-}
-
-type PenroseCanvasCoreProps = PenroseTrio &
-    {maxOptSteps: number, onSvgDrawn: (_: SVGSVGElement) => void}
-
-/** The compile -> optimize -> prepare SVG sequence is not cheap (on the order of 1s for a simple diagram),
- * so we aggressively cache its SVG outputs. */
-// TODO(WN): provide a "redraw" button to resample a misshapen diagram.
-const diagramSvgCache = new Map<string, SVGSVGElement>()
 
 async function hashTrio({dsl, sty, sub}: PenroseTrio): Promise<string> {
     // https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder/encodeInto#buffer_sizing
@@ -48,6 +25,11 @@ async function hashTrio({dsl, sty, sub}: PenroseTrio): Promise<string> {
     return digestArr.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+/** The compile -> optimize -> prepare SVG sequence is not cheap (on the order of 1s for a simple diagram),
+ * so we aggressively cache its SVG outputs. */
+// TODO(WN): provide a "redraw" button to resample a misshapen diagram.
+const diagramSvgCache = new Map<string, SVGSVGElement>()
+
 async function renderPenroseTrio(trio: PenroseTrio, maxOptSteps: number): Promise<SVGSVGElement> {
     const hash = await hashTrio(trio)
     if (diagramSvgCache.has(hash)) return diagramSvgCache.get(hash)!
@@ -64,106 +46,24 @@ async function renderPenroseTrio(trio: PenroseTrio, maxOptSteps: number): Promis
     return svg
 }
 
-/** `onSvgDrawn` is called whenever a new SVG has been produced. */
-function PenroseCanvasCore(
-    {dsl, sty, sub, maxOptSteps, onSvgDrawn}: PenroseCanvasCoreProps)
-    : JSX.Element
-{
-    const [canvas, setCanvas] = React.useState(<pre>Drawing..</pre>)
-
-    const updateDiagramWithError = async (err: string) => {
-        const el = <pre>Penrose error: {err}</pre>
-        setCanvas(el)
-    }
-
-    const updateDiagram = async (svg: SVGSVGElement) => {
-        try {
-            const el = <DomElements>{svg}</DomElements>
-            setCanvas(el)
-            onSvgDrawn(svg)
-        } catch (ex: any) {
-            updateDiagramWithError(ex.toString())
-        }
-    }
-
-    React.useEffect(() => {
-        try {
-            renderPenroseTrio({dsl, sty, sub}, maxOptSteps)
-                .then(updateDiagram, ex => updateDiagramWithError(ex.toString()))
-        } catch (ex: any) {
-            updateDiagramWithError(ex.toString())
-        }
-    },
-    // Note: important not to just pass `props` here so the comparison is on trio contents.
-    [dsl, sty, sub, onSvgDrawn]) 
-
-    return canvas
+export interface PenroseCanvasProps {
+    trio: PenroseTrio
+    maxOptSteps: number
+    embedNodes: Map<string, React.ReactNode>
 }
 
-export type PenroseCanvasProps = PenroseTrio &
-    {maxOptSteps: number, embedNodes: Map<string, React.ReactNode>}
+interface InnerWithContainerProps extends PenroseCanvasProps {
+    containerDiv: HTMLDivElement
+    hiddenDiv: HTMLDivElement
+} 
 
-/** Renders an interactive [Penrose](https://github.com/penrose/penrose) diagram with the specified trio.
- * The Penrose optimizer is ran for at most `maxOptSteps`, a heuristic for when to stop trying.
- * 
- * For every `[name, nd]` in `embedNodes` we locate an object with the same `name` in the substance
- * program, then adjust the style program so that the object's dimensions match those of `nd`,
- * and finally draw the React node `nd` over `name` in the SVG.
- * 
- * This component relies on the length of `embedNodes` never changing! If it changes,
- * you must re-create it. */
-// TODO link to kc's hack https://github.com/penrose/penrose/issues/1057
-// TODO: refactor this logic
-export function PenroseCanvas(
-        {dsl, sty, sub, maxOptSteps, embedNodes}: PenroseCanvasProps)
-        : JSX.Element {
-    const [containerDiv, setContainerDiv] = React.useState<HTMLDivElement | null>(null)
+interface InnerWithEmbedsProps extends Omit<InnerWithContainerProps, 'embedNodes'> {
+    embeds: Map<string, HTMLDivElement>
+}
 
-    interface EmbedData {
-        elt: HTMLDivElement | undefined
-        portal: React.ReactPortal
-    }
-    const [embeds, setEmbeds] = React.useState<Map<string, EmbedData>>(new Map())
-
-    let dim = 400
-    if (containerDiv) {
-        const rect = containerDiv.getBoundingClientRect()
-        dim = Math.ceil(Math.max(400, rect.width))
-    }
-
-    React.useEffect(() => {
-        if (!embedNodes) return
-        if (!containerDiv) return
-        const newEmbeds: Map<string, EmbedData> = new Map()
-        for (const [name, nd] of embedNodes) {
-            const div = <div
-                    className="dib absolute"
-                    // Limit how wide nodes in the diagram can be
-                    style={{maxWidth: `${Math.ceil(dim / 5)}px`}}
-                    ref={newDiv => {
-                        if (!newDiv) return
-                        setEmbeds(embeds => {
-                            const newEmbeds: Map<string, EmbedData> = new Map()
-                            let changed = false
-                            for (const [eName, data] of embeds) {
-                                if (eName === name && data.elt !== newDiv) {
-                                    changed = true
-                                    newEmbeds.set(eName, {...data, elt: newDiv})
-                                } else newEmbeds.set(eName, data)
-                            }
-                            return changed ? newEmbeds : embeds
-                        })
-            }}>{nd}</div>
-            const portal = ReactDOM.createPortal(div, containerDiv, name)
-            const data: EmbedData = {
-                elt: undefined,
-                portal
-            }
-            newEmbeds.set(name, data)
-        }
-        setEmbeds(newEmbeds)
-    // `deps` must have constant size so we can't do a deeper comparison
-    }, [embedNodes, containerDiv, dim])
+function InnerWithEmbeds({trio: {dsl, sty, sub}, maxOptSteps, embeds, containerDiv, hiddenDiv}: InnerWithEmbedsProps): JSX.Element {
+    const containerRect = containerDiv.getBoundingClientRect()
+    const dim = Math.ceil(Math.max(400, containerRect.width))
 
     // TODO: can the canvas dynamically adjust its size to the diagram size?
     sty = sty +
@@ -186,10 +86,11 @@ canvas {
     const boxCol = cssColourToRgba(
         getComputedStyle(document.documentElement)
             .getPropertyValue('--vscode-editorHoverWidget-background'))
-    
-    for (const [name, {elt}] of embeds) {
-        if (!elt) continue
+
+    for (const [name, elt] of embeds) {
         const rect = elt.getBoundingClientRect()
+
+        // KC's hack: https://github.com/penrose/penrose/issues/1057#issuecomment-1164313880
         sty = sty +
 `
 Targettable \`${name}\` {
@@ -200,38 +101,139 @@ override \`${name}\`.textBox.fillColor = ${boxCol}
 `
     }
 
-    // Store the boxes that we can draw interactive elements over
-    const [diagramBoxes, setDiagramBoxes] = React.useState<Map<string, Element>>()
-    const onSvgDrawn = React.useMemo(() => {
-        return (svg: SVGSVGElement) => {
-            const diagramBoxes = new Map<string, Element>()
-            for (const gElt of svg.querySelectorAll("g, rect")) {
-                if (!gElt.textContent) continue
-                const gps = gElt.textContent.match(/`(\w+)`.textBox/)
-                if (!gps) continue
-                const name = gps[1]
-                diagramBoxes.set(name, gElt)
-            }
-            setDiagramBoxes(diagramBoxes)
-    }}, [])
+    const [element, setElement] = React.useState<JSX.Element>(<pre>Drawing..</pre>)
+    const [svg, setSvg] = React.useState<SVGSVGElement>()
 
     React.useEffect(() => {
-        if (!diagramBoxes) return
-        if (!containerDiv) return
-        for (const [name, gElt] of diagramBoxes) {
-            const embed = embeds.get(name)
-            if (!embed) continue
-            const divElt = embed.elt
-            if (!divElt) continue
-            const gRect = gElt.getBoundingClientRect(),
-                  containerRect = containerDiv.getBoundingClientRect()
-            divElt.style.top = `${gRect.top - containerRect.top}px`
-            divElt.style.left = `${gRect.left - containerRect.left}px`
-        }
-    }, [diagramBoxes, embeds, containerDiv])
+        renderPenroseTrio({dsl, sty, sub}, maxOptSteps)
+            .then(svg => {
+                setElement(<>
+                    <div ref={ref => {
+                        if (!ref) return
+                        if (ref.firstChild) ref.replaceChild(svg, ref.firstChild)
+                        else ref.appendChild(svg)
+                        setSvg(svg)
+                    }} />
+                </>)
+            }).catch(ex => {
+                setElement(<pre>Penrose error: {ex.toString()}</pre>)
+            })
+    }, [dsl, sty, sub, maxOptSteps, embeds, containerDiv])
 
-    return <div className="relative" ref={setContainerDiv}>
-        <PenroseCanvasCore dsl={dsl} sty={sty} sub={sub} maxOptSteps={maxOptSteps} onSvgDrawn={onSvgDrawn} />
+    // Position embeds over nodes in the SVG
+    React.useEffect(() => {
+        if (!svg) return
+        console.log(svg.clientWidth)
+
+        // The boxes that we can draw interactive elements over
+        const diagramBoxes = new Map<string, Element>()
+        for (const gElt of svg.querySelectorAll("g, rect")) {
+            if (!gElt.textContent) continue
+            const gps = gElt.textContent.match(/`(\w+)`.textBox/)
+            if (!gps) continue
+            const name = gps[1]
+            diagramBoxes.set(name, gElt)
+        }
+
+        for (const [name, gElt] of diagramBoxes) {
+            const embedElt = embeds.get(name)
+            if (!embedElt) continue
+            const gRect = gElt.getBoundingClientRect()
+            embedElt.style.top = `${gRect.top - containerRect.top}px`
+            embedElt.style.left = `${gRect.left - containerRect.left}px`
+        }
+
+        hiddenDiv.style.visibility = 'visible'
+    }, [svg])
+
+    return element
+}
+
+function InnerWithContainer({trio, maxOptSteps, embedNodes, containerDiv, hiddenDiv}: InnerWithContainerProps): JSX.Element {
+    const rect = containerDiv.getBoundingClientRect()
+    const dim = Math.ceil(Math.max(400, rect.width))
+
+    interface EmbedData {
+        elt: HTMLDivElement | undefined
+        portal: React.ReactPortal
+    }
+
+    const [embeds, setEmbeds] = React.useState<Map<string, EmbedData>>(new Map())
+    // This is set once when all the embeds have been drawn
+    const [embedsFinal, setEmbedsFinal] = React.useState<Map<string, HTMLDivElement>>()
+
+    // Create portals for the embedded nodes; they will update `embeds` when rendered
+    React.useEffect(() => {
+        const newEmbeds: Map<string, EmbedData> = new Map()
+        for (const [name, nd] of embedNodes) {
+            const div = <div
+                className="dib absolute"
+                // Limit how wide nodes in the diagram can be
+                style={{maxWidth: `${Math.ceil(dim / 5)}px`}}
+                ref={newDiv => {
+                    if (!newDiv) return
+                    setEmbeds(embeds => {
+                        const newEmbeds: Map<string, EmbedData> = new Map()
+                        let changed = false
+                        for (const [eName, data] of embeds) {
+                            if (eName === name && data.elt !== newDiv) {
+                                changed = true
+                                newEmbeds.set(eName, {...data, elt: newDiv})
+                            } else newEmbeds.set(eName, data)
+                        }
+                        return changed ? newEmbeds : embeds
+                    })
+            }}>{nd}</div>
+            const portal = ReactDOM.createPortal(div, hiddenDiv, name)
+            const data: EmbedData = {
+                elt: undefined,
+                portal
+            }
+            newEmbeds.set(name, data)
+        }
+        setEmbeds(newEmbeds)
+    // `deps` must have constant size so we can't do a deeper comparison
+    }, [embedNodes, hiddenDiv, dim])
+
+    React.useEffect(() => {
+        const embedDivs = new Map()
+        for (const [name, {elt}] of embeds) {
+            if (!elt) return
+            embedDivs.set(name, elt)
+        }
+        if (embedDivs.size !== embedNodes.size) return
+        setEmbedsFinal(embedDivs)
+    }, [embeds, embedNodes])
+
+    return <>
+        {embedsFinal &&
+            <InnerWithEmbeds trio={trio} maxOptSteps={maxOptSteps} embeds={embedsFinal}
+                containerDiv={containerDiv} hiddenDiv={hiddenDiv} />}
         {Array.from(embeds.values()).map(({portal}) => portal)}
+    </>
+}
+
+/** Renders an interactive [Penrose](https://github.com/penrose/penrose) diagram with the specified trio.
+ * The Penrose optimizer is ran for at most `maxOptSteps`, a heuristic for when to stop trying.
+ *
+ * For every `[name, nd]` in `embedNodes` we locate an object with the same `name` in the substance
+ * program, adjust the style program so that the object's dimensions match those of `nd`, and draw
+ * the React node `nd` over `name` in the SVG diagram. */
+export function PenroseCanvas(props: PenroseCanvasProps): JSX.Element {
+    /* The implementation: do some work, store results, pass results as props to a nested component.
+     * As opposed to doing everything in one component, nested components don't have to handle
+     * partial results and are drawn atomically. The flow is:
+     * - `PenroseCanvas` waits for the container div and an invisible `hiddenDiv`.
+     * - `InnerWithContainer` uses `hiddenDiv` to render embedded nodes without displaying them,
+     *   so that their sizes can be measured.
+     * - `InnerWithEmbeds` adjusts the style program to match the sizes of embeds, draws the diagram,
+     *   positions the embeds over it, and finally makes them visible. */
+
+    const [containerDiv, setContainerDiv] = React.useState<HTMLDivElement | null>(null)
+    const [hiddenDiv, setHiddenDiv] = React.useState<HTMLDivElement | null>(null)
+    return <div className="relative" ref={setContainerDiv}>
+        {containerDiv && hiddenDiv &&
+            <InnerWithContainer {...props} containerDiv={containerDiv} hiddenDiv={hiddenDiv} />}
+        <div style={{visibility: 'hidden'}} ref={setHiddenDiv} />
     </div>
 }
