@@ -1,6 +1,7 @@
 import * as React from "react"
 import * as ReactDOM from "react-dom"
 import * as penrose from "@penrose/core"
+import * as SVG from "@svgdotjs/svg.js"
 
 /** See [here](https://penrose.gitbook.io/penrose/#what-makes-up-a-penrose-program) for explanation. */
 export interface PenroseTrio {
@@ -30,6 +31,15 @@ async function hashTrio({dsl, sty, sub}: PenroseTrio): Promise<string> {
 // TODO(WN): provide a "redraw" button to resample a misshapen diagram.
 const diagramSvgCache = new Map<string, SVGSVGElement>()
 
+function aliasToNumber (x: SVG.NumberAlias): number {
+    let y: string | number
+    if (x instanceof Number) y = x.valueOf()
+    else y = x as any
+
+    if (typeof y === 'string') return parseFloat(y)
+    else return y
+}
+
 async function renderPenroseTrio(trio: PenroseTrio, maxOptSteps: number): Promise<SVGSVGElement> {
     const hash = await hashTrio(trio)
     if (diagramSvgCache.has(hash)) return diagramSvgCache.get(hash)!
@@ -42,8 +52,26 @@ async function renderPenroseTrio(trio: PenroseTrio, maxOptSteps: number): Promis
     if (!penrose.stateConverged(stateRes.value))
         console.warn(`Diagram failed to converge in ${maxOptSteps} steps`)
     const svg = await penrose.RenderStatic(stateRes.value, async path => path)
-    diagramSvgCache.set(hash, svg)
-    return svg
+
+    // The canvas is usually too large, so trim the SVG as a postprocessing step
+    const obj = SVG.SVG(svg)
+    const view = obj.viewbox()
+    let minX = view.width, maxX = 0, minY = view.height, maxY = 0
+    
+    obj.each((i, children) => {
+        const child = children[i]
+        minX = Math.min(minX, aliasToNumber(child.x()))
+        maxX = Math.max(maxX, aliasToNumber(child.x()) + aliasToNumber(child.width()))
+        minY = Math.min(minY, aliasToNumber(child.y()))
+        maxY = Math.max(maxY, aliasToNumber(child.y()) + aliasToNumber(child.height()))
+    })
+
+    const padding = 10
+    const newX = minX - padding, newY = minY - padding, newW = (maxX - minX) + padding, newH = (maxY - minY) + padding
+    const newSvg = obj.viewbox(newX, newY, newW, newH).width(newW).height(newH)
+    diagramSvgCache.set(hash, newSvg.node)
+
+    return newSvg.node
 }
 
 export interface PenroseCanvasProps {
@@ -65,12 +93,11 @@ function InnerWithEmbeds({trio: {dsl, sty, sub}, maxOptSteps, embeds, containerD
     const containerRect = containerDiv.getBoundingClientRect()
     const dim = Math.ceil(Math.max(400, containerRect.width))
 
-    // TODO: can the canvas dynamically adjust its size to the diagram size?
     sty = sty +
 `
 canvas {
     width = ${dim}
-    height = ${Math.ceil(dim/2)}
+    height = ${dim}
 }
 `
 
@@ -116,14 +143,13 @@ override \`${name}\`.textBox.fillColor = ${boxCol}
                     }} />
                 </>)
             }).catch(ex => {
-                setElement(<pre>Penrose error: {ex.toString()}</pre>)
+                setElement(<pre>Error while drawing: {ex.toString()}</pre>)
             })
     }, [dsl, sty, sub, maxOptSteps, embeds, containerDiv])
 
     // Position embeds over nodes in the SVG
     React.useEffect(() => {
         if (!svg) return
-        console.log(svg.clientWidth)
 
         // The boxes that we can draw interactive elements over
         const diagramBoxes = new Map<string, Element>()
