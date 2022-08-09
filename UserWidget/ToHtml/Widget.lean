@@ -1,14 +1,13 @@
 import Lean.Widget.UserWidget
 import Lean.Elab.Eval
 
-import UserWidget.Util
 import UserWidget.ToHtml.Html
 
 open Lean Widget in
 @[widget]
 def staticHtmlWidget : UserWidgetDefinition where
   name := "HTML Display"
-  javascript := include_str "../../widget/dist/staticHtml.js"
+  javascript := include_str ".." / ".." / "widget" / "dist" / "staticHtml.js"
 
 open Lean Elab Widget in
 unsafe def evalHtmlUnsafe (stx : Syntax) : TermElabM Html := do
@@ -25,7 +24,7 @@ open Lean Meta Elab Command in
 @[commandElab htmlCmd]
 def elabHtmlCmd : CommandElab := fun
   | stx@`(#html $t:term) =>
-    runTermElabM none fun _ => do
+    runTermElabM fun _ => do
       let id := `staticHtmlWidget
       let ht ← evalHtml t
       let props := Json.mkObj [("html", toJson ht)]

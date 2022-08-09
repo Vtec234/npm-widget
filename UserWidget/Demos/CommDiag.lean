@@ -4,7 +4,6 @@ import Lean.Server.Rpc.RequestHandling
 import Lean.Elab
 import Lean.Widget.Basic
 
-import UserWidget.Util
 import UserWidget.ToHtml.Widget
 
 /-! Demonstrates commutative diagrams.
@@ -42,7 +41,7 @@ open Lean.Widget in
 @[widget]
 def squares : UserWidgetDefinition where
   name := "Commutative diagram"
-  javascript := include_str "../../widget/dist/squares.js"
+  javascript := include_str ".." / ".." / "widget" / "dist" / "squares.js"
 
 syntax (name := squaresTacStx) "squares!" : tactic
 open Lean Elab Tactic in

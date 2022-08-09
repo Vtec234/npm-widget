@@ -1,6 +1,4 @@
-import UserWidget.Util
 import UserWidget.ToHtml.Widget
-
 
 def codefn (s : String) := s!"
   import * as React from 'react';
