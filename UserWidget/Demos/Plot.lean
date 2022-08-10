@@ -18,6 +18,8 @@ def data := List.range 10 |> List.map Float.ofNat |>.toArray
       |> Array.map (fun x => json% {x: $(x), y: $(fn x)})
       |> Lean.Json.arr
 
-#eval data
+def props := json% {data: $(data)}
 
-#widget ppp (json% {data: $(data)})
+#eval props
+
+#widget ppp props
