@@ -37,15 +37,14 @@ instance : Neg JsonNumber where
 
 instance : ToJson Float where
   toJson x :=
-    let xAbs := if x < 0.0 then - x else x
-    let s :=  toString xAbs
+    let s :=  toString (if x < 0.0 then - x else x)
     match Lean.Syntax.decodeScientificLitVal? <| s with
     | none =>
       match s with
       | "inf" => "inf" -- [todo] emit a warning
       | "-inf" => "-inf"
       | "nan" => "nan"
-      | _ => panic! s!"bad string {s}"
+      | _ => panic! s!"unhandled float string {s}"
     | some (m, e, de) =>
       let j : JsonNumber := OfScientific.ofScientific m e de
       let j := if x < 0.0 then -j else j
