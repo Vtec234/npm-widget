@@ -35,6 +35,21 @@ instance : OfScientific JsonNumber where
 instance : Neg JsonNumber where
   neg jn := ⟨- jn.mantissa, jn.exponent⟩
 
+instance : ToJson Float where
+  toJson x :=
+    let s :=  toString (if x < 0.0 then - x else x)
+    match Lean.Syntax.decodeScientificLitVal? <| s with
+    | none =>
+      match s with
+      | "inf" => "inf" -- [todo] emit a warning
+      | "-inf" => "-inf"
+      | "nan" => "nan"
+      | _ => panic! s!"unhandled float string {s}"
+    | some (m, e, de) =>
+      let j : JsonNumber := OfScientific.ofScientific m e de
+      let j := if x < 0.0 then -j else j
+      Json.num j
+
 syntax "[" jso,* "]" : jso
 syntax "-"? scientific : jso
 syntax "-"? num : jso
