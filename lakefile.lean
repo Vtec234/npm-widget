@@ -38,5 +38,4 @@ target staticHtml (pkg : Package) : FilePath := tsxTarget pkg "staticHtml"
 target squares (pkg : Package) : FilePath := tsxTarget pkg "squares"
 target plot (pkg : Package) : FilePath := tsxTarget pkg "plot"
 
-@[defaultTarget]
 lean_lib UserWidget
